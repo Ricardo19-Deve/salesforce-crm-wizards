@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RecordType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sales_Campaign</fullName>
+    <active>true</active>
+    <description>Targeted sales push on a list of accounts.</description>
+    <label>Sales Campaign</label>
+</RecordType>

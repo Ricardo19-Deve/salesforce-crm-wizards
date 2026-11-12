@@ -1,0 +1,13 @@
+{
+  "orgName": "CRM Wizards Demo",
+  "edition": "Developer",
+  "features": ["EnableSetPasswordInApi"],
+  "settings": {
+    "lightningExperienceSettings": {
+      "enableS1DesktopEnabled": true
+    },
+    "accountSettings": {
+      "enableRelateContactToMultipleAccounts": true
+    }
+  }
+}

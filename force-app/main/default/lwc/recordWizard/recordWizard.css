@@ -1,0 +1,469 @@
+:host {
+    display: block;
+    --wizard-border: rgba(16, 39, 59, 0.1);
+    --wizard-blue: #0b5cab;
+}
+
+.page-shell {
+    min-height: 100vh;
+    padding-bottom: 6rem;
+    background: linear-gradient(180deg, #f8fbfe 0%, #edf3f7 100%);
+}
+
+.hero {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    background: #fff;
+    border-bottom: 1px solid var(--wizard-border);
+}
+
+.hero-copy h1 {
+    margin: 0.15rem 0 0.35rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #10273b;
+}
+
+.eyebrow,
+.section-eyebrow {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #587083;
+    text-transform: uppercase;
+}
+
+.record-type-pill {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 1rem;
+    background: rgba(11, 92, 171, 0.08);
+    color: var(--wizard-blue);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.journey-strip {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: min(94vw, 64rem);
+    margin: 1rem auto;
+    padding: 0.75rem 1rem;
+    background: #fff;
+    border: 1px solid var(--wizard-border);
+    border-radius: 1rem;
+}
+
+.journey-item {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.journey-item:first-child {
+    flex: 0 0 auto;
+}
+
+.journey-step {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6a7e8e;
+}
+
+.journey-dot {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    background: #eef3f7;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+.journey-text {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.75rem;
+}
+
+.journey-step-active .journey-dot {
+    background: var(--wizard-blue);
+    color: #fff;
+}
+
+.journey-step-active {
+    color: #10273b;
+}
+
+.journey-step-complete .journey-dot {
+    background: rgba(46, 132, 74, 0.15);
+    color: #2e844a;
+}
+
+.journey-line {
+    flex: 1;
+    height: 1px;
+    background: var(--wizard-border);
+}
+
+.content {
+    width: min(94vw, 64rem);
+    margin: 0 auto;
+}
+
+.card {
+    margin-bottom: 1rem;
+    padding: 1.25rem;
+    background: #fff;
+    border: 1px solid var(--wizard-border);
+    border-radius: 1rem;
+}
+
+.card h2 {
+    margin: 0.25rem 0 1rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #10273b;
+}
+
+.rt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.75rem;
+}
+
+.rt-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-height: 7rem;
+    padding: 1rem;
+    text-align: left;
+    background: #fff;
+    border: 1px solid var(--wizard-border);
+    border-radius: 0.8rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rt-card:hover,
+.rt-card:focus {
+    border-color: var(--wizard-blue);
+    box-shadow: 0 0 0 2px rgba(11, 92, 171, 0.15);
+    outline: none;
+}
+
+.rt-card-default {
+    border-color: rgba(11, 92, 171, 0.45);
+}
+
+.rt-title {
+    font-weight: 700;
+    color: #10273b;
+}
+
+.rt-default {
+    margin-left: 0.4rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 1rem;
+    background: rgba(11, 92, 171, 0.08);
+    color: var(--wizard-blue);
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+.rt-description {
+    flex: 1;
+    color: #587083;
+    font-size: 0.78rem;
+}
+
+.rt-action {
+    color: var(--wizard-blue);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.section-title {
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--wizard-border);
+}
+
+.field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+}
+
+.field-tile {
+    margin-bottom: 0.75rem;
+}
+
+@media (max-width: 760px) {
+    .field-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.lead-note {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(11, 92, 171, 0.25);
+    border-radius: 0.8rem;
+    background: #eef4ff;
+    color: #10273b;
+}
+
+.duplicate-note {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(221, 122, 1, 0.4);
+    border-radius: 0.8rem;
+    background: #fef7ec;
+    color: #10273b;
+}
+
+.duplicate-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.duplicate-list {
+    margin: 0.5rem 0 0.75rem 2rem;
+    list-style: disc;
+}
+
+.duplicate-detail {
+    color: #587083;
+}
+
+.merge-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    overflow-x: auto;
+}
+
+.merge-row {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(10rem, 1fr);
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.merge-header {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #587083;
+    text-transform: uppercase;
+}
+
+.merge-label {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: #10273b;
+}
+
+.merge-cell {
+    padding: 0.5rem 0.6rem;
+    text-align: left;
+    background: #fff;
+    border: 1px solid var(--wizard-border);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    word-break: break-word;
+}
+
+.merge-cell:hover {
+    border-color: var(--wizard-blue);
+}
+
+.merge-cell-selected {
+    border: 2px solid var(--wizard-blue);
+    background: #eef4ff;
+    font-weight: 600;
+}
+
+.merge-hint {
+    margin-top: 0.75rem;
+    color: #587083;
+    font-size: 0.78rem;
+}
+
+.save-error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(186, 5, 23, 0.3);
+    border-radius: 0.8rem;
+    background: #fef1ee;
+    color: #ba0517;
+}
+
+.error-wrap,
+.loading-card {
+    position: relative;
+    width: min(94vw, 64rem);
+    min-height: 4rem;
+    margin: 0 auto 1rem;
+}
+
+.sticky-actions {
+    position: sticky;
+    bottom: 3.25rem;
+    z-index: 30;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: min(94vw, 64rem);
+    margin: 0 auto;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid var(--wizard-border);
+    border-radius: 1rem;
+}
+
+.action-buttons {
+    display: inline-flex;
+    gap: 0.5rem;
+}
+
+.done-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+}
+
+.candidate {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--wizard-border);
+    border-radius: 0.6rem;
+}
+
+.candidate-selected {
+    border-color: var(--wizard-blue);
+    background: #eef4ff;
+}
+
+.candidate-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.score {
+    min-width: 3.2rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 1rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+.score-high {
+    background: #ddf4e4;
+    color: #2e844a;
+}
+
+.score-medium {
+    background: #fef1dc;
+    color: #8c4b02;
+}
+
+.score-low {
+    background: #eef3f7;
+    color: #587083;
+}
+
+.match-yes {
+    color: #2e844a;
+}
+
+.match-no {
+    color: #8c4b02;
+}
+
+.suggestion-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    gap: 0.5rem;
+}
+
+.suggestion {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.6rem;
+    text-align: left;
+    background: #fff;
+    border: 1px solid var(--wizard-border);
+    border-radius: 0.6rem;
+    cursor: pointer;
+}
+
+.suggestion-selected {
+    border: 2px solid var(--wizard-blue);
+    background: #eef4ff;
+}
+
+.related-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.searching {
+    color: var(--wizard-blue);
+    font-weight: 600;
+}
+
+/* Review cells are choices, not inputs: a radio-style circle and plain text. */
+.merge-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #f7f9fb;
+}
+
+.merge-radio {
+    flex: 0 0 auto;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #a8b8c4;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.merge-cell-selected .merge-radio {
+    border-color: var(--wizard-blue);
+    box-shadow: inset 0 0 0 3px #fff;
+    background: var(--wizard-blue);
+}
+
+.merge-value-empty {
+    color: #8a9aa6;
+    font-style: italic;
+    font-weight: 400;
+}

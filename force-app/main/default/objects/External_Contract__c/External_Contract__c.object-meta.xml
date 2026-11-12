@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Contracts synchronised by ContractSyncJob from a ContractSource (mock data in this repository), upsert on External_Id__c.</description>
+    <enableActivities>false</enableActivities>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <label>External Contract</label>
+    <nameField>
+        <label>Contract Reference</label>
+        <type>Text</type>
+    </nameField>
+    <pluralLabel>External Contracts</pluralLabel>
+    <sharingModel>ReadWrite</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

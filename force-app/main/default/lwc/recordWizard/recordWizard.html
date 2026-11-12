@@ -1,0 +1,342 @@
+<template>
+    <div class="page-shell">
+        <header class="hero">
+            <div class="hero-icon">
+                <lightning-icon icon-name={objectIcon} size="medium" alternative-text={objectLabel}></lightning-icon>
+            </div>
+            <div class="hero-copy">
+                <div class="eyebrow">New {objectLabel}</div>
+                <h1>{title}</h1>
+                <template if:true={selectedRecordType}>
+                    <span class="record-type-pill">{selectedRecordType.label}</span>
+                </template>
+            </div>
+        </header>
+
+        <div class="journey-strip">
+            <template for:each={journeySteps} for:item="js">
+                <div key={js.key} class="journey-item">
+                    <template if:true={js.showLine}>
+                        <span class="journey-line"></span>
+                    </template>
+                    <div class={js.cssClass}>
+                        <span class="journey-dot">{js.number}</span>
+                        <span class="journey-text"><strong>{js.title}</strong><small>{js.subtitle}</small></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <template if:true={loadError}>
+            <div class="error-wrap">
+                <div class="slds-notify slds-notify_alert slds-alert_error" role="alert">
+                    <lightning-icon icon-name="utility:error" size="x-small" variant="inverse" alternative-text="Error"></lightning-icon>
+                    <span class="slds-m-left_small">{loadError}</span>
+                </div>
+            </div>
+        </template>
+
+        <template if:true={isLoading}>
+            <div class="loading-card">
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </div>
+        </template>
+
+        <template if:true={showRecordTypeStep}>
+            <main class="content">
+                <section class="card">
+                    <div class="section-eyebrow">STEP 1</div>
+                    <h2>Which type of {objectLabel} do you want to create?</h2>
+                    <div class="rt-grid">
+                        <template for:each={recordTypeCards} for:item="rt">
+                            <button key={rt.recordTypeId} class={rt.cardClass} data-id={rt.recordTypeId} onclick={handleRecordTypeClick}>
+                                <span class="rt-title">
+                                    {rt.label}
+                                    <template if:true={rt.isDefault}>
+                                        <span class="rt-default">Your default</span>
+                                    </template>
+                                </span>
+                                <template if:true={rt.description}>
+                                    <span class="rt-description">{rt.description}</span>
+                                </template>
+                                <span class="rt-action">Select <lightning-icon icon-name="utility:chevronright" size="xx-small"></lightning-icon></span>
+                            </button>
+                        </template>
+                    </div>
+                </section>
+            </main>
+            <footer class="sticky-actions">
+                <span></span>
+                <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
+            </footer>
+        </template>
+
+        <template if:true={showFormStep}>
+            <main class="content">
+                <template if:true={isLoadingFields}>
+                    <div class="loading-card">
+                        <lightning-spinner alternative-text="Loading fields" size="medium"></lightning-spinner>
+                    </div>
+                </template>
+
+                <template if:true={selectionSummary}>
+                    <div class="lead-note" role="status">
+                        <lightning-icon icon-name="utility:merge" size="small" alternative-text="Selection"></lightning-icon>
+                        <span>{selectionSummary} when you save. The values below come from the review step and can still be changed.</span>
+                    </div>
+                </template>
+
+                <template if:true={hasSuggestions}>
+                    <section class="card">
+                        <h2 class="section-title">Suggested Accounts (from the Lead company)</h2>
+                        <div class="suggestion-grid">
+                            <template for:each={suggestionRows} for:item="sug">
+                                <button key={sug.accountId} class={sug.cssClass} data-id={sug.accountId} onclick={handleSuggestionClick}>
+                                    <strong>{sug.name}</strong>
+                                    <template if:true={sug.badge}><span class="rt-default">{sug.badge}</span></template>
+                                    <small>{sug.detail}</small>
+                                </button>
+                            </template>
+                        </div>
+                        <p class="merge-hint">Click an Account to use it as the principal Account (Account Name).</p>
+                    </section>
+                </template>
+
+                <template if:true={hasRelatedAccounts}>
+                    <section class="card">
+                        <h2 class="section-title">Related Accounts</h2>
+                        <template for:each={relatedAccountRows} for:item="acc">
+                            <div key={acc.id} class="related-row">
+                                <lightning-input type="checkbox" label="Link" variant="label-hidden" checked={acc.checked}
+                                    data-id={acc.id} onchange={handleRelatedToggle}></lightning-input>
+                                <a href={acc.url} target="_blank">{acc.name}</a>
+                            </div>
+                        </template>
+                        <p class="merge-hint">Checked Accounts are linked to the Contact as Related Accounts (indirect), next to the principal Account.</p>
+                    </section>
+                </template>
+
+                <template if:true={duplicateOutcome}>
+                    <div class="duplicate-note" role="alert">
+                        <div class="duplicate-title">
+                            <lightning-icon icon-name="utility:warning" size="small" variant="warning" alternative-text="Duplicates"></lightning-icon>
+                            <strong>{duplicateOutcome.message}</strong>
+                        </div>
+                        <ul class="duplicate-list">
+                            <template for:each={duplicateRows} for:item="dup">
+                                <li key={dup.recordId}>
+                                    <a href={dup.url} target="_blank">{dup.name}</a>
+                                    <template if:true={dup.detail}><span class="duplicate-detail">&nbsp;· {dup.detail}</span></template>
+                                </li>
+                            </template>
+                        </ul>
+                        <div class="action-buttons">
+                            <template if:true={canMerge}>
+                                <lightning-button label="Merge with existing" variant="brand" icon-name="utility:merge" onclick={handleOpenMerge} disabled={isSaving}></lightning-button>
+                            </template>
+                            <template if:true={duplicateOutcome.canSaveAnyway}>
+                                <lightning-button label="Save anyway" variant="brand-outline" onclick={handleSaveAnyway} disabled={isSaving}></lightning-button>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <template if:true={saveError}>
+                    <div class="save-error" role="alert">
+                        <lightning-icon icon-name="utility:error" size="small" variant="error" alternative-text="Error"></lightning-icon>
+                        <span>{saveError}</span>
+                    </div>
+                </template>
+
+                <template for:each={sections} for:item="section">
+                    <section key={section.name} class="card">
+                        <h2 class="section-title">{section.name}</h2>
+                        <div class="field-grid">
+                            <template for:each={section.columns} for:item="column">
+                                <div key={column.key} class="field-column">
+                                    <template for:each={column.fields} for:item="field">
+                                        <div key={field.key} class="field-tile">
+                                            <c-wizard-field-input field={field} data-field-api={field.apiName}
+                                                onfieldchange={handleFieldChange}></c-wizard-field-input>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </section>
+                </template>
+            </main>
+            <footer class="sticky-actions">
+                <span>
+                    <template if:true={showBack}>
+                        <lightning-button label={backLabel} icon-name="utility:back"
+                            onclick={handleBack} disabled={isSaving}></lightning-button>
+                    </template>
+                </span>
+                <span class="action-buttons">
+                    <lightning-button label="Cancel" onclick={handleCancel} disabled={isSaving}></lightning-button>
+                    <template if:true={isNotLastPage}>
+                        <lightning-button variant="brand" label="Next" icon-name="utility:forward"
+                            icon-position="right" onclick={handleNext}></lightning-button>
+                    </template>
+                    <template if:true={isLastPage}>
+                        <lightning-button variant="brand" label={saveLabel} onclick={handleSave}
+                            disabled={isSaving}></lightning-button>
+                    </template>
+                </span>
+            </footer>
+        </template>
+
+        <template if:true={showIdentifyStep}>
+            <main class="content">
+                <section class="card">
+                    <div class="section-eyebrow">FIND EXISTING RECORDS</div>
+                    <div class="field-grid">
+                        <template for:each={identifyInputs} for:item="inp">
+                            <div key={inp.apiName} class="field-tile">
+                                <template if:true={inp.isInput}>
+                                    <lightning-input type={inp.inputType} label={inp.label} value={inp.value}
+                                        data-identify-field={inp.apiName} onchange={handleIdentifyChange}></lightning-input>
+                                </template>
+                                <template if:true={inp.isLookup}>
+                                    <lightning-record-picker label={inp.label} object-api-name={inp.lookupObject}
+                                        filter={inp.lookupFilter} value={inp.value}
+                                        data-identify-field={inp.apiName} onchange={handleIdentifyChange}></lightning-record-picker>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                    <p class="merge-hint">
+                        Start with the Email or the Last Name: matching Contacts and Leads appear below as you type.
+                        <template if:true={isSearching}><span class="searching">&nbsp;Searching…</span></template>
+                    </p>
+                </section>
+
+                <template if:true={identifyError}>
+                    <div class="save-error" role="alert">
+                        <lightning-icon icon-name="utility:error" size="small" variant="error" alternative-text="Error"></lightning-icon>
+                        <span>{identifyError}</span>
+                    </div>
+                </template>
+
+                <template if:true={hasSearched}>
+                    <section class="card">
+                        <h2 class="section-title">Existing records</h2>
+                        <template if:false={hasCandidates}>
+                            <p>No existing Contact or Lead reaches {minimumScore}%. A new Contact will be created.</p>
+                        </template>
+                        <template if:true={hasCandidates}>
+                            <template for:each={candidateRows} for:item="cand">
+                                <div key={cand.recordId} class={cand.rowClass}>
+                                    <lightning-input type="checkbox" label={cand.action} variant="label-hidden" checked={cand.selected} disabled={cand.disabled}
+                                        data-id={cand.recordId} data-type={cand.recordType} onchange={handleCandidateToggle}></lightning-input>
+                                    <span class={cand.scoreClass}>{cand.score}%</span>
+                                    <lightning-icon icon-name={cand.icon} size="small" alternative-text={cand.recordType}></lightning-icon>
+                                    <div class="candidate-main">
+                                        <a href={cand.url} target="_blank"><strong>{cand.name}</strong></a>
+                                        <small>{cand.recordType} · {cand.detail}</small>
+                                        <small class="match-yes">Matches: {cand.matchedText}</small>
+                                        <template if:true={cand.notMatchedText}>
+                                            <small class="match-no">Different: {cand.notMatchedText}</small>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                            <p class="merge-hint">Tick the Contacts to merge (max 3) and the Leads to convert. Leave everything unticked to create a new Contact.</p>
+                        </template>
+                    </section>
+                </template>
+            </main>
+            <footer class="sticky-actions">
+                <span>
+                    <template if:true={canChangeRecordType}>
+                        <lightning-button label="Change record type" icon-name="utility:back" onclick={handleChangeRecordType}></lightning-button>
+                    </template>
+                </span>
+                <span class="action-buttons">
+                    <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
+                    <template if:true={hasSearched}>
+                        <lightning-button variant="brand" label={identifyContinueLabel} icon-name="utility:forward"
+                            icon-position="right" onclick={handleIdentifyContinue} disabled={isSearching}></lightning-button>
+                    </template>
+                </span>
+            </footer>
+        </template>
+
+        <template if:true={showReviewStep}>
+            <main class="content">
+                <template if:true={reviewError}>
+                    <div class="save-error" role="alert">
+                        <lightning-icon icon-name="utility:error" size="small" variant="error" alternative-text="Error"></lightning-icon>
+                        <span>{reviewError}</span>
+                    </div>
+                </template>
+
+                <template if:true={isMergeMode}>
+                    <section class="card">
+                        <h2 class="section-title">Contact to keep</h2>
+                        <lightning-radio-group label="The other Contacts are merged into it" options={masterOptions}
+                            value={masterId} onchange={handleMasterChange}></lightning-radio-group>
+                    </section>
+                </template>
+
+                <section class="card">
+                    <h2 class="section-title">Choose the value to keep</h2>
+                    <template if:true={isLoadingReview}>
+                        <div class="loading-card"><lightning-spinner alternative-text="Loading" size="small"></lightning-spinner></div>
+                    </template>
+                    <template if:false={isLoadingReview}>
+                        <template if:true={hasReviewRows}>
+                            <div class="merge-table">
+                                <div class="merge-row merge-header">
+                                    <div class="merge-label">Field</div>
+                                    <template for:each={reviewColumns} for:item="col">
+                                        <div key={col.key} class="merge-col-title">{col.label}<br/><small>{col.tag}</small></div>
+                                    </template>
+                                </div>
+                                <template for:each={reviewRows} for:item="row">
+                                    <div key={row.apiName} class="merge-row">
+                                        <div class="merge-label">{row.label}</div>
+                                        <template for:each={row.cells} for:item="cell">
+                                            <button key={cell.key} class={cell.cssClass} data-field={row.apiName}
+                                                data-source={cell.source} onclick={handleReviewCellClick} aria-pressed={cell.selected}>
+                                                <span class="merge-radio"></span>
+                                                <span class={cell.textClass}>{cell.display}</span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                        <p class="merge-hint">
+                            Select the value to keep in each row. {reviewIdenticalCount} fields have the same value everywhere.
+                            For Account Name, the chosen Account becomes the principal Account; the others can be kept as Related Accounts in the next step.
+                        </p>
+                    </template>
+                </section>
+            </main>
+            <footer class="sticky-actions">
+                <span>
+                    <lightning-button label="Back to search" icon-name="utility:back" onclick={handleBackToIdentify}></lightning-button>
+                </span>
+                <span class="action-buttons">
+                    <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
+                    <lightning-button variant="brand" label="Continue" icon-name="utility:forward" icon-position="right"
+                        onclick={handleReviewContinue} disabled={isLoadingReview}></lightning-button>
+                </span>
+            </footer>
+        </template>
+
+        <template if:true={showDoneStep}>
+            <main class="content">
+                <section class="card done-card">
+                    <lightning-icon icon-name="utility:success" size="large" variant="success" alternative-text="Created"></lightning-icon>
+                    <div class="section-eyebrow">COMPLETE</div>
+                    <h2>{doneTitle}</h2>
+                    <p>{selectionSummary}</p>
+                    <lightning-button variant="brand" label={openRecordLabel} onclick={handleOpenRecord}></lightning-button>
+                </section>
+            </main>
+        </template>
+    </div>
+</template>

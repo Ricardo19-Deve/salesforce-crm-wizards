@@ -1,0 +1,156 @@
+<template>
+    <div class="page-shell">
+        <header class="hero">
+            <lightning-icon icon-name="standard:opportunity" size="medium" alternative-text="Opportunity"></lightning-icon>
+            <div class="hero-copy">
+                <div class="eyebrow">New Opportunity</div>
+                <h1>Opportunity with products</h1>
+            </div>
+        </header>
+
+        <div class="journey-strip">
+            <template for:each={journeySteps} for:item="js">
+                <div key={js.key} class="journey-item">
+                    <template lwc:if={js.showLine}>
+                        <span class="journey-line"></span>
+                    </template>
+                    <div class={js.cssClass}>
+                        <span class="journey-dot">{js.number}</span>
+                        <span class="journey-text"><strong>{js.title}</strong><small>{js.subtitle}</small></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <template lwc:if={loadError}>
+            <div class="error-wrap">
+                <div class="slds-notify slds-notify_alert slds-alert_error" role="alert">{loadError}</div>
+            </div>
+        </template>
+
+        <template lwc:if={isLoading}>
+            <div class="loading-card">
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </div>
+        </template>
+
+        <template lwc:if={saveError}>
+            <div class="content">
+                <div class="save-error" role="alert">
+                    <lightning-icon icon-name="utility:error" size="small" variant="error" alternative-text="Error"></lightning-icon>
+                    <span>{saveError}</span>
+                </div>
+            </div>
+        </template>
+
+        <template lwc:if={showDetails}>
+            <main class="content">
+                <template for:each={sections} for:item="section">
+                    <section key={section.name} class="card">
+                        <h2 class="section-title">{section.name}</h2>
+                        <div class="field-grid">
+                            <template for:each={section.columns} for:item="column">
+                                <div key={column.key}>
+                                    <template for:each={column.fields} for:item="field">
+                                        <div key={field.key} class="field-tile">
+                                            <c-wizard-field-input field={field} data-field-api={field.apiName}
+                                                onfieldchange={handleFieldChange}></c-wizard-field-input>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </section>
+                </template>
+            </main>
+            <footer class="sticky-actions">
+                <span></span>
+                <span class="action-buttons">
+                    <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
+                    <lightning-button variant="brand" label="Next: products" icon-name="utility:forward"
+                        icon-position="right" onclick={handleToProducts}></lightning-button>
+                </span>
+            </footer>
+        </template>
+
+        <template lwc:if={showProducts}>
+            <main class="content">
+                <section class="card">
+                    <div class="products-header">
+                        <div>
+                            <h2 class="section-title">Products</h2>
+                            <span class="record-type-pill">{priceBookLabel}</span>
+                        </div>
+                        <div class="products-filters">
+                            <lightning-input type="search" label="Search products" variant="label-hidden"
+                                placeholder="Search by name or code" value={searchTerm} onchange={handleSearch}></lightning-input>
+                            <lightning-combobox label="Family" variant="label-hidden" options={familyOptions}
+                                value={familyFilter} onchange={handleFamily}></lightning-combobox>
+                        </div>
+                    </div>
+
+                    <template lwc:if={isLoadingCatalog}>
+                        <div class="loading-card"><lightning-spinner alternative-text="Loading products" size="small"></lightning-spinner></div>
+                    </template>
+
+                    <template lwc:elseif={hasProducts}>
+                        <div class="product-table" role="table" aria-label="Products">
+                            <div class="product-row product-head" role="row">
+                                <span role="columnheader"></span>
+                                <span role="columnheader">Product</span>
+                                <span role="columnheader">List price</span>
+                                <span role="columnheader">Quantity</span>
+                                <span role="columnheader">Sales price</span>
+                                <span role="columnheader">Discount %</span>
+                                <span role="columnheader">Line type</span>
+                            </div>
+                            <template for:each={productRows} for:item="p">
+                                <div key={p.pricebookEntryId} class={p.rowClass} role="row">
+                                    <lightning-input type="checkbox" label={p.name} variant="label-hidden" checked={p.selected}
+                                        data-id={p.pricebookEntryId} onchange={handleProductToggle}></lightning-input>
+                                    <span class="product-name"><strong>{p.name}</strong><small>{p.productCode} · {p.family}</small></span>
+                                    <span>{p.listPrice}</span>
+                                    <lightning-input data-line-input type="number" label="Quantity" variant="label-hidden" min="0.01" step="0.01"
+                                        required value={p.quantity} disabled={p.inputsDisabled}
+                                        data-id={p.pricebookEntryId} data-prop="quantity" onchange={handleLineChange}></lightning-input>
+                                    <lightning-input data-line-input type="number" label="Sales price" variant="label-hidden" min="0" step="0.01"
+                                        required value={p.unitPrice} disabled={p.inputsDisabled}
+                                        data-id={p.pricebookEntryId} data-prop="unitPrice" onchange={handleLineChange}></lightning-input>
+                                    <lightning-input data-line-input type="number" label="Discount" variant="label-hidden" min="0" max="100" step="0.01"
+                                        value={p.discount} disabled={p.inputsDisabled}
+                                        data-id={p.pricebookEntryId} data-prop="discount" onchange={handleLineChange}></lightning-input>
+                                    <lightning-combobox label="Line type" variant="label-hidden" options={lineTypeOptions}
+                                        placeholder="Choose…" value={p.lineType} disabled={p.inputsDisabled}
+                                        data-id={p.pricebookEntryId} data-prop="lineType" onchange={handleLineChange}></lightning-combobox>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template lwc:else>
+                        <p>No product matches the search in this price book.</p>
+                    </template>
+                </section>
+            </main>
+            <footer class="sticky-actions">
+                <lightning-button label="Back" icon-name="utility:back" onclick={handleBackToDetails} disabled={isSaving}></lightning-button>
+                <span class="action-buttons">
+                    <span class="total">{selectedCount} selected · Total {totalLabel}</span>
+                    <lightning-button label="Cancel" onclick={handleCancel} disabled={isSaving}></lightning-button>
+                    <lightning-button variant="brand" label={saveLabel} onclick={handleSave} disabled={isSaving}></lightning-button>
+                </span>
+            </footer>
+        </template>
+
+        <template lwc:if={showDone}>
+            <main class="content">
+                <section class="card done-card">
+                    <lightning-icon icon-name="utility:success" size="large" variant="success" alternative-text="Created"></lightning-icon>
+                    <h2>Your Opportunity was created</h2>
+                    <p>{selectedCount} product(s) were added.</p>
+                    <lightning-button variant="brand" label="Open Opportunity" onclick={handleOpenRecord}></lightning-button>
+                </section>
+            </main>
+        </template>
+    </div>
+</template>

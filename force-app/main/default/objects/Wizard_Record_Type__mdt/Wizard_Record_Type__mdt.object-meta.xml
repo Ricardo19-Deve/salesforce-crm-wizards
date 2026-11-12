@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Record types offered in step 1 of the record wizard, per object. Minimum Match Score drives the Identify step.</description>
+    <label>Wizard Record Type</label>
+    <pluralLabel>Wizard Record Types</pluralLabel>
+    <visibility>Public</visibility>
+</CustomObject>

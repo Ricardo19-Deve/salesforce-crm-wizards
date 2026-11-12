@@ -1,0 +1,31 @@
+<template>
+    <template lwc:if={field.isCheckbox}>
+        <lightning-input data-input type="checkbox" label={field.displayLabel} checked={field.checked}
+            disabled={field.disabled} onchange={handleChange}></lightning-input>
+    </template>
+    <template lwc:elseif={field.isPicklist}>
+        <lightning-combobox data-input label={field.displayLabel} value={field.value} options={field.options}
+            placeholder={field.placeholder} required={field.required} disabled={field.disabled}
+            onchange={handleChange}></lightning-combobox>
+    </template>
+    <template lwc:elseif={field.isMultiPicklist}>
+        <lightning-dual-listbox data-input label={field.displayLabel} source-label="Available"
+            selected-label="Selected" size="5" value={field.value} options={field.options}
+            required={field.required} disabled={field.disabled} onchange={handleChange}></lightning-dual-listbox>
+    </template>
+    <template lwc:elseif={field.isLookup}>
+        <lightning-record-picker data-input label={field.displayLabel} object-api-name={field.lookupObject}
+            filter={field.lookupFilter} value={field.value} required={field.required}
+            disabled={field.disabled} onchange={handleChange}></lightning-record-picker>
+    </template>
+    <template lwc:elseif={field.isTextarea}>
+        <lightning-textarea data-input label={field.displayLabel} value={field.value}
+            max-length={field.maxLength} required={field.required} disabled={field.disabled}
+            onchange={handleChange}></lightning-textarea>
+    </template>
+    <template lwc:else>
+        <lightning-input data-input type={field.inputType} label={field.displayLabel} value={field.value}
+            max-length={field.maxLength} step={field.inputStep} formatter={field.inputFormatter}
+            required={field.required} disabled={field.disabled} onchange={handleChange}></lightning-input>
+    </template>
+</template>

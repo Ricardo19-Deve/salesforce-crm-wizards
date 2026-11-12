@@ -1,0 +1,21 @@
+{
+  "name": "salesforce-crm-wizards",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Metadata-driven Salesforce record wizards (Apex + LWC)",
+  "license": "MIT",
+  "scripts": {
+    "lint": "eslint force-app/main/default/lwc",
+    "test": "sfdx-lwc-jest",
+    "test:coverage": "sfdx-lwc-jest --coverage"
+  },
+  "devDependencies": {
+    "@lwc/eslint-plugin-lwc": "^2.0.0",
+    "@salesforce/eslint-config-lwc": "^3.6.0",
+    "@salesforce/eslint-plugin-lightning": "^1.0.0",
+    "@salesforce/sfdx-lwc-jest": "^7.0.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-jest": "^28.0.0"
+  }
+}

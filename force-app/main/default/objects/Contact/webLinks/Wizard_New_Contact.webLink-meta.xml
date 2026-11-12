@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<WebLink xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Wizard_New_Contact</fullName>
+    <availability>online</availability>
+    <description>Opens the record wizard for Contact. c__session forces a fresh wizard every click.</description>
+    <displayType>massActionButton</displayType>
+    <encodingKey>UTF-8</encodingKey>
+    <linkType>url</linkType>
+    <masterLabel>New Contact (Wizard)</masterLabel>
+    <openType>replace</openType>
+    <protected>false</protected>
+    <requireRowSelection>false</requireRowSelection>
+    <url>/lightning/cmp/c__recordWizard?c__object=Contact&amp;c__session={!NOW()}</url>
+</WebLink>

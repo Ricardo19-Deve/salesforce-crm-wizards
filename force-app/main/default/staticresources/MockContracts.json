@@ -1,0 +1,134 @@
+[
+  {
+    "id": "CTR-0001",
+    "reference": "NORTHWIND-2026-001",
+    "status": "Signed",
+    "counterpartyName": "Northwind Traders",
+    "counterpartyAccountNumber": "ACC-1001",
+    "effectiveDate": "2026-02-01",
+    "endDate": "2028-02-01",
+    "updatedAt": "2026-10-06T09:00:00Z",
+    "documentUrl": "https://example.com/contracts/CTR-0001.pdf"
+  },
+  {
+    "id": "CTR-0002",
+    "reference": "CONTOSO-2025-002",
+    "status": "Active",
+    "counterpartyName": "Contoso Ltd",
+    "counterpartyAccountNumber": "ACC-1002",
+    "effectiveDate": "2026-03-01",
+    "endDate": "2028-03-01",
+    "updatedAt": "2026-10-07T09:00:00Z",
+    "documentUrl": "https://example.com/contracts/CTR-0002.pdf"
+  },
+  {
+    "id": "CTR-0003",
+    "reference": "FABRIKAM-2026-003",
+    "status": "Expired",
+    "counterpartyName": "Fabrikam Inc",
+    "counterpartyAccountNumber": "ACC-1003",
+    "effectiveDate": "2026-04-01",
+    "endDate": "2028-04-01",
+    "updatedAt": "2026-10-08T09:00:00Z",
+    "documentUrl": "https://example.com/contracts/CTR-0003.pdf"
+  },
+  {
+    "id": "CTR-0004",
+    "reference": "TAILSPIN-2025-004",
+    "status": "Signed",
+    "counterpartyName": "Tailspin Toys",
+    "counterpartyAccountNumber": "ACC-1004",
+    "effectiveDate": "2026-05-01",
+    "endDate": "2028-05-01",
+    "updatedAt": "2026-10-09T09:00:00Z",
+    "documentUrl": "https://example.com/contracts/CTR-0004.pdf"
+  },
+  {
+    "id": "CTR-0005",
+    "reference": "ADVENTURE-2026-005",
+    "status": "Draft",
+    "counterpartyName": "Adventure Works",
+    "counterpartyAccountNumber": "ACC-1005",
+    "effectiveDate": "2026-06-01",
+    "endDate": "2028-06-01",
+    "updatedAt": "2026-10-10T09:00:00Z",
+    "documentUrl": "https://example.com/contracts/CTR-0005.pdf"
+  },
+  {
+    "id": "CTR-0006",
+    "reference": "BLUE-2025-006",
+    "status": "Signed",
+    "counterpartyName": "Blue Yonder Airlines",
+    "counterpartyAccountNumber": "ACC-1006",
+    "effectiveDate": "2026-07-01",
+    "endDate": "2028-07-01",
+    "updatedAt": "2026-10-11T09:00:00Z",
+    "documentUrl": "https://example.com/contracts/CTR-0006.pdf"
+  },
+  {
+    "id": "CTR-0007",
+    "reference": "UNKNOWN-2026-007",
+    "status": "Signed",
+    "counterpartyName": "Unknown Partner GmbH",
+    "counterpartyAccountNumber": "ACC-9999",
+    "effectiveDate": "2026-08-01",
+    "endDate": "2028-08-01",
+    "updatedAt": "2026-10-12T09:00:00Z",
+    "documentUrl": "https://example.com/contracts/CTR-0007.pdf"
+  },
+  {
+    "id": "CTR-0008",
+    "reference": "NORTHWIND-2025-008",
+    "status": "Active",
+    "counterpartyName": "Northwind Traders",
+    "counterpartyAccountNumber": "ACC-1001",
+    "effectiveDate": "2026-09-01",
+    "endDate": "2028-09-01",
+    "updatedAt": "2026-10-13T09:00:00Z",
+    "documentUrl": "https://example.com/contracts/CTR-0008.pdf"
+  },
+  {
+    "id": "CTR-0009",
+    "reference": "CONTOSO-2026-009",
+    "status": "Expired",
+    "counterpartyName": "Contoso Ltd",
+    "counterpartyAccountNumber": "ACC-1002",
+    "effectiveDate": "2026-10-01",
+    "endDate": "2028-10-01",
+    "updatedAt": "2026-10-14T09:00:00Z",
+    "documentUrl": "https://example.com/contracts/CTR-0009.pdf"
+  },
+  {
+    "id": "CTR-0010",
+    "reference": "FABRIKAM-2025-010",
+    "status": "Signed",
+    "counterpartyName": "Fabrikam Inc",
+    "counterpartyAccountNumber": "ACC-1003",
+    "effectiveDate": "2026-11-01",
+    "endDate": "2028-11-01",
+    "updatedAt": "2026-10-15T09:00:00Z",
+    "documentUrl": "https://example.com/contracts/CTR-0010.pdf"
+  },
+  {
+    "id": "CTR-0011",
+    "reference": "TAILSPIN-2026-011",
+    "status": "Draft",
+    "counterpartyName": "Tailspin Toys",
+    "counterpartyAccountNumber": "ACC-1004",
+    "effectiveDate": "2026-12-01",
+    "endDate": "2028-12-01",
+    "updatedAt": "2026-10-16T09:00:00Z",
+    "documentUrl": "https://example.com/contracts/CTR-0011.pdf"
+  },
+  {
+    "id": "CTR-0012",
+    "reference": "ADVENTURE-2025-012",
+    "status": "Signed",
+    "counterpartyName": "Adventure Works",
+    "counterpartyAccountNumber": "ACC-1005",
+    "effectiveDate": "2026-01-01",
+    "endDate": "2028-01-01",
+    "updatedAt": "2026-10-17T09:00:00Z",
+    "documentUrl": "https://example.com/contracts/CTR-0012.pdf"
+  }
+]
