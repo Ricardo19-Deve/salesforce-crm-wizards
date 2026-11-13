@@ -1,0 +1,106 @@
+<template>
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb">Projects / {projectName}</div>
+            <h1 class="page-title">Issues</h1>
+            <div class="page-sub">{count} issues</div>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="search">
+            <lightning-icon icon-name="utility:search" size="x-small"></lightning-icon>
+            <input type="search" placeholder="Search issues" value={searchTerm} oninput={handleSearch} />
+        </div>
+        <template for:each={filters} for:item="f">
+            <select key={f.key} class="field-select filter" data-filter={f.key} onchange={handleFilter} title={f.label}>
+                <template for:each={f.options} for:item="o">
+                    <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
+                </template>
+            </select>
+        </template>
+        <label class="switch">
+            <input type="checkbox" checked={hideDone} onchange={handleHideDone} />
+            <span>Hide done</span>
+        </label>
+    </div>
+
+    <div class="table-wrap glass">
+        <table class="issues">
+            <thead>
+                <tr>
+                    <template for:each={columns} for:item="col">
+                        <th key={col.field} class={col.thClass} data-field={col.field} onclick={handleSort}>
+                            <span>{col.label}</span>
+                            <template lwc:if={col.isSorted}>
+                                <lightning-icon icon-name={col.sortIcon} size="xx-small"></lightning-icon>
+                            </template>
+                        </th>
+                    </template>
+                </tr>
+            </thead>
+            <tbody>
+                <template for:each={rows} for:item="row">
+                    <tr key={row.id} data-id={row.id} onclick={handleRowClick}>
+                        <td>
+                            <span class={row.typeClass} title={row.type}>
+                                <lightning-icon
+                                    icon-name={row.typeIcon}
+                                    size="xx-small"
+                                    variant="inverse"
+                                ></lightning-icon>
+                            </span>
+                        </td>
+                        <td><span class={row.keyClass}>{row.key}</span></td>
+                        <td class="cell-summary">
+                            <span>{row.summary}</span>
+                            <template for:each={row.labels} for:item="label">
+                                <span key={label} class="label-tag">{label}</span>
+                            </template>
+                        </td>
+                        <td><span class={row.statusClass}>{row.status}</span></td>
+                        <td>
+                            <span class={row.prioClass} title={row.priority}>{row.prioGlyph}</span>
+                        </td>
+                        <td>
+                            <div class="cell-user">
+                                <template lwc:if={row.assigneeId}>
+                                    <span class="avatar avatar-sm" style={row.assigneeStyle}
+                                        >{row.assigneeInitials}</span
+                                    >
+                                </template>
+                                <template lwc:else>
+                                    <span class="avatar avatar-sm avatar-empty">
+                                        <lightning-icon icon-name="utility:user" size="xx-small"></lightning-icon>
+                                    </span>
+                                </template>
+                                <span>{row.assigneeName}</span>
+                            </div>
+                        </td>
+                        <td>{row.sprintName}</td>
+                        <td>
+                            <template lwc:if={row.hasPoints}><span class="points">{row.points}</span></template>
+                        </td>
+                        <td>
+                            <template lwc:if={row.dueDate}>
+                                <lightning-formatted-date-time
+                                    value={row.dueDate}
+                                    time-zone="UTC"
+                                    day="numeric"
+                                    month="short"
+                                    year="numeric"
+                                ></lightning-formatted-date-time>
+                            </template>
+                        </td>
+                        <td>
+                            <lightning-relative-date-time value={row.lastModifiedDate}></lightning-relative-date-time>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+        <template lwc:if={isEmpty}>
+            <div class="empty">No issues match your filters.</div>
+        </template>
+    </div>
+</template>

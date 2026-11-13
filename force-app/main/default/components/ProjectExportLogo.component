@@ -1,0 +1,11 @@
+<apex:component>
+    <apex:attribute name="logoUrl" type="String" description="Logo URL; empty shows the text wordmark" />
+    <apex:attribute name="isWord" type="Boolean" description="Word output (images need authentication, so the wordmark is used)" />
+    <apex:attribute name="big" type="Boolean" description="Cover-size logo" />
+    <apex:outputPanel layout="none" rendered="{!AND(NOT(ISBLANK(logoUrl)), NOT(isWord))}">
+        <img src="{!logoUrl}" class="{!IF(big, 'logo-big', 'logo')}" alt="{!$Label.Project_Board_Brand}" />
+    </apex:outputPanel>
+    <apex:outputPanel layout="none" rendered="{!OR(ISBLANK(logoUrl), isWord)}">
+        <span class="{!IF(big, 'wordmark-big', 'wordmark')}">{!$Label.Project_Board_Brand}</span>
+    </apex:outputPanel>
+</apex:component>

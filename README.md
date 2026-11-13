@@ -1,6 +1,6 @@
 # Salesforce CRM Wizards
 
-Metadata-driven Lightning wizards for creating CRM records without duplicates. Built with Apex and Lightning Web Components, and deployable to any Developer Edition org.
+Metadata-driven Lightning wizards for creating CRM records without duplicates, and a Scrum-style **Project Board** for delivering Salesforce changes. Built with Apex and Lightning Web Components, and deployable to any Developer Edition org.
 
 This is a neutral open-source reference. It rewrites patterns I built in enterprise CRM work, using fictitious data and generic names. It makes no external calls and contains no credentials.
 
@@ -11,6 +11,7 @@ This is a neutral open-source reference. It rewrites patterns I built in enterpr
 | **Opportunity + products wizard** | The price book is chosen from the Account's country (rule-based, with a fallback). The wizard saves the Opportunity and its lines in one transaction. The server decides the stage, price book and currency. |
 | **Contract sync pattern** | A Queueable and a Schedulable run an incremental sync with a watermark and an upsert on an external id. The sync reads a `ContractFeed.Source` interface. This repository only ships a **mock** source (static-resource JSON), so it makes no callouts. |
 | **Before-save Flow** | `Campaign_Set_Name` builds a consistent Campaign name. It is bulk-safe and uses no SOQL or DML. |
+| **Project Board** | Kanban board, backlog with sprints and epics, issue tracking, **BRD & solution design**, **UAT test scripts** generated from acceptance criteria, file attachments and **sprint reports**. Every document exports to PDF and Word. Runs as a Lightning tab or a full-screen Experience Cloud portal, with a light / dark glass UI. See [docs/project-board.md](docs/project-board.md). |
 
 ## Screenshots
 
@@ -23,6 +24,16 @@ Captured in a Developer Edition org with the demo data (fictitious companies and
 | ![Summary](docs/images/08-contact-summary.png) Summary: records kept / merged / converted and final values | |
 | ![Opportunity details](docs/images/05-opportunity-details.png) Opportunity: configured fields, Account limited by record type | ![Products](docs/images/06-opportunity-products.png) Products: country price book, per-line Line Type, live total |
 | ![Campaign form](docs/images/07-campaign-form.png) Campaign: the Flow builds the name from Region and Campaign Name | |
+
+### Project Board
+
+| | |
+| --- | --- |
+| ![Board](docs/images/09-project-board.png) Board: active sprint, drag & drop, progress ring, BRD / test / file badges | ![Board dark](docs/images/10-project-board-dark.png) The same board in dark mode |
+| ![Backlog](docs/images/11-project-backlog.png) Backlog: sprints, epics panel with progress, quick create | ![Issue](docs/images/12-project-issue-detail.png) Issue: inline editing, comments, tabs for BRD / Test scripts / Attachments |
+| ![BRD](docs/images/13-project-brd.png) BRD: numbered requirements and acceptance criteria, sign-off | ![Test scripts](docs/images/14-project-test-scripts.png) Test scripts: steps, Pass / Fail / Blocked, generated from the BRD |
+| ![Reports](docs/images/15-project-reports.png) Reports: velocity (committed vs delivered) and sprint cards | ![Sprint report PDF](docs/images/16-project-sprint-report-pdf.png) Sprint report exported to PDF |
+| ![BRD PDF](docs/images/17-project-brd-pdf.png) BRD exported to PDF (also available as Word) | |
 
 ## Architecture
 
@@ -79,6 +90,10 @@ sf org login web -a crm-wizards
 sf project deploy start -o crm-wizards -d force-app -l RunLocalTests
 sf org assign permset -o crm-wizards -n Record_Wizard_User -n Opportunity_Wizard_User -n Contract_Integration
 sf apex run -o crm-wizards -f scripts/apex/seed-demo-data.apex
+
+# Project Board
+sf org assign permset -o crm-wizards -n Project_Board_User
+sf apex run -o crm-wizards -f scripts/apex/seed-project-board.apex
 ```
 
 Then add the list buttons **New Contact (Wizard)**, **New Campaign (Wizard)** and **New Opportunity (Wizard)** to the list view button layout of each object. You can also open the wizards directly:
@@ -111,6 +126,8 @@ Optional settings:
 6. **Contract sync.** The seed script ran the sync from the mock source.
    - Open **External Contracts**: the contracts are linked to Accounts by account number.
 
+The Project Board has its own 5-minute demo script in [docs/project-board.md](docs/project-board.md#demo-script-5-minutes).
+
 [docs/presentation.md](docs/presentation.md) has a talk track for presenting the project.
 
 ## Configure
@@ -131,21 +148,25 @@ The configuration guide is in [docs/configuration.md](docs/configuration.md). In
 - **Org-dependent branches:** a few branches depend on org features. Related Accounts need *Contacts to Multiple Accounts* enabled.
 - **Configuration tests:** they use in-memory Custom Metadata rows.
 - **Controller tests:** they use the sample configuration shipped in `customMetadata/`.
-- **JavaScript:** `npm test` runs Jest on the shared field helpers.
+- **Project Board:** `ProjectBoardControllerTest` and `ProjectDocsControllerTest` run as a user with `Project_Board_User`, so user-mode access is tested too.
+- **JavaScript:** `npm test` runs Jest on the shared field helpers and on `projectBoardUtils`.
 
 ## Project structure
 
 ```
 force-app/main/default/
   classes/           Apex: controllers, services, config, tests
-  lwc/               recordWizard, opportunityWizard, wizardFieldInput, wizardFieldUtils
+  lwc/               recordWizard, opportunityWizard, wizardFieldInput, wizardFieldUtils,
+                     projectBoard* (Project Board app, views, documents, design system)
   customMetadata/    sample configuration (Contact, Campaign, Opportunity, price book rules)
-  objects/           custom metadata types, record types, fields, External_Contract__c
+  objects/           custom metadata types, record types, fields, External_Contract__c,
+                     PM_* (project, sprint, issue, comment, BRD, requirement, test case)
+  pages/             ProjectBrdExport, ProjectTestScriptExport, ProjectSprintReport (PDF / Word)
   flows/             Campaign_Set_Name (before-save)
-  permissionsets/    Record_Wizard_User, Opportunity_Wizard_User, Contract_Integration
+  permissionsets/    Record_Wizard_User, Opportunity_Wizard_User, Contract_Integration, Project_Board_User
   staticresources/   MockContracts.json (fictitious data)
-scripts/apex/        seed-demo-data.apex
-docs/                architecture, configuration, presentation
+scripts/apex/        seed-demo-data.apex, seed-project-board.apex
+docs/                architecture, configuration, presentation, project-board
 ```
 
 ## License

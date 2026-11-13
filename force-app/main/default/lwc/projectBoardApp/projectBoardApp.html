@@ -1,0 +1,444 @@
+<template>
+    <div class={rootClass}>
+        <!-- Animated liquid background -->
+        <div class="jx-bg" aria-hidden="true">
+            <span class="blob blob-1"></span>
+            <span class="blob blob-2"></span>
+            <span class="blob blob-3"></span>
+            <span class="blob blob-4"></span>
+        </div>
+
+        <div class="shell">
+            <!-- ---------------------------------------------------------- Sidebar -->
+            <aside class="sidebar glass">
+                <div class="brand">
+                    <template lwc:if={logoUrl}>
+                        <img class="brand-logo" src={logoUrl} alt={brandName} />
+                    </template>
+                    <template lwc:else>
+                        <span class="brand-mark">
+                            <lightning-icon
+                                icon-name="utility:kanban"
+                                size="x-small"
+                                variant="inverse"
+                            ></lightning-icon>
+                        </span>
+                    </template>
+                    <div class="brand-text">
+                        <div class="brand-company">{brandName}</div>
+                        <div class="brand-app">{appName}</div>
+                    </div>
+                </div>
+
+                <template lwc:if={project}>
+                    <div class="project-card">
+                        <span class="project-avatar" style={projectAvatarStyle}>{projectInitial}</span>
+                        <div class="project-head-text">
+                            <div class="project-name">{project.Name}</div>
+                            <div class="project-type">Software project · {projectKey}</div>
+                        </div>
+                    </div>
+                    <div class="nav-section">Planning</div>
+                    <nav class="nav">
+                        <template for:each={navItems} for:item="item">
+                            <button key={item.view} class={item.cls} data-view={item.view} onclick={handleNav}>
+                                <lightning-icon icon-name={item.icon} size="x-small"></lightning-icon>
+                                <span>{item.label}</span>
+                                <template lwc:if={item.count}>
+                                    <span class="nav-count">{item.count}</span>
+                                </template>
+                            </button>
+                        </template>
+                    </nav>
+                </template>
+
+                <div class="nav-section">Projects</div>
+                <div class="project-list">
+                    <template for:each={projectItems} for:item="p">
+                        <button key={p.id} class={p.cls} data-id={p.id} onclick={handleProjectSelect} title={p.name}>
+                            <span class="project-avatar project-avatar-sm" style={p.style}>{p.initial}</span>
+                            <span class="nav-text">{p.name}</span>
+                            <span class="nav-key">{p.key}</span>
+                        </button>
+                    </template>
+                </div>
+                <button class="nav-item nav-create" onclick={openProjectDialog}>
+                    <lightning-icon icon-name="utility:add" size="x-small"></lightning-icon>
+                    <span>Create project</span>
+                </button>
+
+                <div class="sidebar-foot">
+                    <span class="kbd">Ctrl</span><span class="kbd">K</span>
+                    <span>to search</span>
+                </div>
+            </aside>
+
+            <!-- ---------------------------------------------------------- Main -->
+            <main class="main">
+                <header class="topbar glass">
+                    <div class="search search-global">
+                        <lightning-icon icon-name="utility:search" size="x-small"></lightning-icon>
+                        <input
+                            class="global-search-input"
+                            type="search"
+                            placeholder="Search issues…"
+                            onkeydown={handleGlobalSearch}
+                        />
+                        <span class="kbd kbd-inline">⌘K</span>
+                    </div>
+                    <div class="topbar-right">
+                        <button class="icon-btn" title="Refresh" onclick={handleRefresh}>
+                            <lightning-icon icon-name="utility:refresh" size="x-small"></lightning-icon>
+                        </button>
+                        <button class="icon-btn theme-btn" title={themeToggleTitle} onclick={toggleTheme}>
+                            <span class="theme-glyph">{themeGlyph}</span>
+                        </button>
+                        <button class="btn btn-primary" onclick={handleCreateClick} disabled={showEmptyState}>
+                            <lightning-icon icon-name="utility:add" size="xx-small" variant="inverse"></lightning-icon>
+                            Create
+                        </button>
+                        <div class="user-menu">
+                            <button
+                                class="avatar user-avatar"
+                                style={myAvatarStyle}
+                                title={currentUserName}
+                                onclick={toggleUserMenu}
+                            >
+                                {myInitials}
+                            </button>
+                            <template lwc:if={userMenuOpen}>
+                                <div class="menu-scrim" onclick={closeUserMenu}></div>
+                                <div class="menu glass">
+                                    <div class="menu-head">
+                                        <span class="avatar" style={myAvatarStyle}>{myInitials}</span>
+                                        <div>
+                                            <div class="menu-name">{currentUserName}</div>
+                                            <div class="menu-sub">{brandName} · {appName}</div>
+                                        </div>
+                                    </div>
+                                    <button class="menu-item" onclick={toggleTheme}>
+                                        <span class="theme-glyph">{themeGlyph}</span>
+                                        <span>{themeToggleTitle}</span>
+                                    </button>
+                                    <template lwc:if={fullScreen}>
+                                        <a class="menu-item" href={salesforceUrl} target="_blank" rel="noopener">
+                                            <lightning-icon
+                                                icon-name="utility:salesforce1"
+                                                size="x-small"
+                                            ></lightning-icon>
+                                            <span>Back to Salesforce</span>
+                                        </a>
+                                        <div class="menu-divider"></div>
+                                        <a class="menu-item menu-danger" href={logoutUrl}>
+                                            <lightning-icon icon-name="utility:logout" size="x-small"></lightning-icon>
+                                            <span>Log out</span>
+                                        </a>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="content">
+                    <template lwc:if={loading}>
+                        <div class="loading-bar"><span></span></div>
+                    </template>
+
+                    <template lwc:if={hasProjects}>
+                        <div class="view">
+                            <template lwc:if={isBoard}>
+                                <c-project-board-kanban
+                                    issues={issues}
+                                    sprints={sprints}
+                                    project={project}
+                                    current-user-id={currentUserId}
+                                    onopenissue={handleOpenIssue}
+                                    onmove={handleMove}
+                                    oncreate={handleCreate}
+                                    oncompletesprint={handleCompleteSprint}
+                                    onnavigate={handleNavigate}
+                                ></c-project-board-kanban>
+                            </template>
+                            <template lwc:elseif={isBacklog}>
+                                <c-project-board-backlog
+                                    issues={issues}
+                                    sprints={sprints}
+                                    project={project}
+                                    current-user-id={currentUserId}
+                                    onopenissue={handleOpenIssue}
+                                    onmove={handleMove}
+                                    oncreate={handleCreate}
+                                    onquickcreate={handleQuickCreate}
+                                    oncreatesprint={handleCreateSprint}
+                                    onstartsprint={handleStartSprint}
+                                    oncompletesprint={handleCompleteSprint}
+                                    ondeletesprint={handleDeleteSprint}
+                                ></c-project-board-backlog>
+                            </template>
+                            <template lwc:elseif={isReports}>
+                                <c-project-board-reports
+                                    issues={issues}
+                                    sprints={sprints}
+                                    project={project}
+                                    onopenissue={handleOpenIssue}
+                                ></c-project-board-reports>
+                            </template>
+                            <template lwc:else>
+                                <c-project-board-issue-list
+                                    issues={issues}
+                                    project={project}
+                                    search-term={globalSearch}
+                                    onopenissue={handleOpenIssue}
+                                ></c-project-board-issue-list>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template lwc:if={showEmptyState}>
+                        <div class="empty-state glass">
+                            <span class="empty-orb">
+                                <lightning-icon
+                                    icon-name="utility:kanban"
+                                    size="medium"
+                                    variant="inverse"
+                                ></lightning-icon>
+                            </span>
+                            <h2>Plan, track and release great work</h2>
+                            <p>Create your first project to get a board, a backlog and sprints.</p>
+                            <button class="btn btn-primary" onclick={openProjectDialog}>Create project</button>
+                        </div>
+                    </template>
+                </div>
+            </main>
+        </div>
+
+        <!-- ---------------------------------------------------------- Issue modals -->
+        <template lwc:if={createOpen}>
+            <c-project-board-issue-detail
+                mode="create"
+                defaults={createDefaults}
+                issues={issues}
+                sprints={sprints}
+                project={project}
+                current-user-id={currentUserId}
+                onclose={handleDetailClose}
+                oncreated={handleIssueCreated}
+            ></c-project-board-issue-detail>
+        </template>
+        <template lwc:if={showDetail}>
+            <c-project-board-issue-detail
+                issue-id={selectedIssueId}
+                issues={issues}
+                sprints={sprints}
+                project={project}
+                current-user-id={currentUserId}
+                onclose={handleDetailClose}
+                onchanged={handleIssueChanged}
+                ondeleted={handleIssueDeleted}
+                onopenissue={handleOpenIssue}
+                oncreatechild={handleCreateChild}
+            ></c-project-board-issue-detail>
+        </template>
+
+        <!-- ---------------------------------------------------------- Create project -->
+        <template lwc:if={projectDialog}>
+            <div class="jm-overlay">
+                <section
+                    role="dialog"
+                    tabindex="-1"
+                    aria-modal="true"
+                    aria-label="Create project"
+                    class="jm-dialog modal-panel"
+                >
+                    <div class="modal-head">
+                        <span class="modal-title">Create project</span>
+                        <button class="icon-btn" title="Close" onclick={closeDialogs}>
+                            <lightning-icon icon-name="utility:close" size="x-small"></lightning-icon>
+                        </button>
+                    </div>
+                    <div class="modal-content">
+                        <template lwc:if={dialogError}>
+                            <div class="form-error">{dialogError}</div>
+                        </template>
+                        <div class="form-stack">
+                            <div>
+                                <label class="field-label">Name <span class="req">*</span></label>
+                                <input
+                                    class="field-input project-name-input"
+                                    type="text"
+                                    maxlength="80"
+                                    data-field="name"
+                                    value={projectDialog.name}
+                                    oninput={handleProjectDialogChange}
+                                />
+                            </div>
+                            <div>
+                                <label class="field-label">Key <span class="req">*</span></label>
+                                <input
+                                    class="field-input"
+                                    type="text"
+                                    maxlength="10"
+                                    data-field="key"
+                                    value={projectDialog.key}
+                                    oninput={handleProjectDialogChange}
+                                />
+                                <div class="field-help">
+                                    Prefix for issue keys, e.g. {projectDialog.key}-123. 2-10 letters/digits.
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Description</label>
+                                <textarea
+                                    class="field-textarea"
+                                    data-field="description"
+                                    data-text={projectDialog.description}
+                                    oninput={handleProjectDialogChange}
+                                ></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-foot">
+                        <button class="btn btn-subtle" onclick={closeDialogs}>Cancel</button>
+                        <button class="btn btn-primary" disabled={dialogBusy} onclick={confirmCreateProject}>
+                            Create project
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </template>
+
+        <!-- ---------------------------------------------------------- Start sprint -->
+        <template lwc:if={sprintDialog}>
+            <div class="jm-overlay">
+                <section
+                    role="dialog"
+                    tabindex="-1"
+                    aria-modal="true"
+                    aria-label="Start sprint"
+                    class="jm-dialog modal-panel"
+                >
+                    <div class="modal-head">
+                        <span class="modal-title">Start sprint</span>
+                        <button class="icon-btn" title="Close" onclick={closeDialogs}>
+                            <lightning-icon icon-name="utility:close" size="x-small"></lightning-icon>
+                        </button>
+                    </div>
+                    <div class="modal-content">
+                        <p class="dialog-text">
+                            <strong>{sprintDialog.issueCount}</strong> issues will be included in this sprint.
+                        </p>
+                        <template lwc:if={dialogError}>
+                            <div class="form-error">{dialogError}</div>
+                        </template>
+                        <div class="form-grid">
+                            <div class="full">
+                                <label class="field-label">Sprint name <span class="req">*</span></label>
+                                <input
+                                    class="field-input"
+                                    type="text"
+                                    data-field="name"
+                                    value={sprintDialog.name}
+                                    oninput={handleSprintDialogChange}
+                                />
+                            </div>
+                            <div class="full">
+                                <label class="field-label">Duration</label>
+                                <select class="field-select" data-field="duration" onchange={handleSprintDialogChange}>
+                                    <template for:each={durationOptions} for:item="o">
+                                        <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="field-label">Start date <span class="req">*</span></label>
+                                <input
+                                    class="field-input"
+                                    type="date"
+                                    data-field="startDate"
+                                    value={sprintDialog.startDate}
+                                    onchange={handleSprintDialogChange}
+                                />
+                            </div>
+                            <div>
+                                <label class="field-label">End date <span class="req">*</span></label>
+                                <input
+                                    class="field-input"
+                                    type="date"
+                                    data-field="endDate"
+                                    value={sprintDialog.endDate}
+                                    onchange={handleSprintDialogChange}
+                                />
+                            </div>
+                            <div class="full">
+                                <label class="field-label">Sprint goal</label>
+                                <textarea
+                                    class="field-textarea"
+                                    maxlength="255"
+                                    data-field="goal"
+                                    data-text={sprintDialog.goal}
+                                    oninput={handleSprintDialogChange}
+                                ></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-foot">
+                        <button class="btn btn-subtle" onclick={closeDialogs}>Cancel</button>
+                        <button class="btn btn-primary" disabled={dialogBusy} onclick={confirmStartSprint}>
+                            Start sprint
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </template>
+
+        <!-- ---------------------------------------------------------- Complete sprint -->
+        <template lwc:if={completeDialog}>
+            <div class="jm-overlay">
+                <section
+                    role="dialog"
+                    tabindex="-1"
+                    aria-modal="true"
+                    aria-label="Complete sprint"
+                    class="jm-dialog modal-panel"
+                >
+                    <div class="modal-head">
+                        <span class="modal-title">Complete {completeDialog.name}</span>
+                        <button class="icon-btn" title="Close" onclick={closeDialogs}>
+                            <lightning-icon icon-name="utility:close" size="x-small"></lightning-icon>
+                        </button>
+                    </div>
+                    <div class="modal-content">
+                        <template lwc:if={dialogError}>
+                            <div class="form-error">{dialogError}</div>
+                        </template>
+                        <div class="complete-stats">
+                            <div class="stat glass">
+                                <span class="stat-value stat-done">{completeDialog.doneCount}</span>
+                                <span class="stat-label">Completed</span>
+                            </div>
+                            <div class="stat glass">
+                                <span class="stat-value">{completeDialog.openCount}</span>
+                                <span class="stat-label">Open</span>
+                            </div>
+                        </div>
+                        <template lwc:if={completeDialog.hasOpen}>
+                            <label class="field-label">Move open issues to</label>
+                            <select class="field-select" onchange={handleCompleteTarget}>
+                                <template for:each={completeTargetOptions} for:item="o">
+                                    <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
+                                </template>
+                            </select>
+                        </template>
+                    </div>
+                    <div class="modal-foot">
+                        <button class="btn btn-subtle" onclick={closeDialogs}>Cancel</button>
+                        <button class="btn btn-primary" disabled={dialogBusy} onclick={confirmCompleteSprint}>
+                            Complete sprint
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </template>
+    </div>
+</template>

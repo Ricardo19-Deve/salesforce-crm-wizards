@@ -1,0 +1,168 @@
+<template>
+    <div class="board">
+        <div class="page-header">
+            <div>
+                <div class="breadcrumb">Projects / {projectName}</div>
+                <h1 class="page-title">{boardTitle}</h1>
+                <template lwc:if={hasActiveSprint}>
+                    <div class="page-sub">{sprintMeta}</div>
+                    <template lwc:if={sprintGoal}>
+                        <div class="sprint-goal"><strong>Goal:</strong> {sprintGoal}</div>
+                    </template>
+                </template>
+            </div>
+            <div class="header-actions">
+                <div class="progress-ring glass" style={progress.style} title={progress.title}>
+                    <div class="ring">
+                        <span class="ring-value">{progress.pct}%</span>
+                    </div>
+                    <div class="ring-text">
+                        <span class="ring-label">Done</span>
+                        <span class="ring-sub">{progress.detail}</span>
+                    </div>
+                </div>
+                <template lwc:if={hasActiveSprint}>
+                    <button class="btn" onclick={handleCompleteSprint}>Complete sprint</button>
+                </template>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="search">
+                <lightning-icon icon-name="utility:search" size="x-small"></lightning-icon>
+                <input type="search" placeholder="Search this board" value={searchTerm} oninput={handleSearch} />
+            </div>
+            <div class="avatar-group">
+                <template for:each={assignees} for:item="a">
+                    <button
+                        key={a.id}
+                        class={a.cls}
+                        style={a.style}
+                        title={a.name}
+                        data-id={a.id}
+                        onclick={toggleAssignee}
+                    >
+                        {a.initials}
+                    </button>
+                </template>
+            </div>
+            <button class={onlyMineClass} onclick={toggleOnlyMine}>Only my issues</button>
+            <template lwc:if={hasFilters}>
+                <button class="btn btn-link" onclick={clearFilters}>Clear filters</button>
+            </template>
+        </div>
+
+        <template lwc:if={showKanbanHint}>
+            <div class="info-banner glass">
+                <lightning-icon icon-name="utility:info" size="x-small"></lightning-icon>
+                <span>No active sprint — the board shows all open work (Kanban mode).</span>
+                <button class="btn btn-link" onclick={handleGoToBacklog}>Plan a sprint in the backlog</button>
+            </div>
+        </template>
+
+        <div class="columns">
+            <template for:each={columns} for:item="col">
+                <div
+                    key={col.status}
+                    class={col.columnClass}
+                    data-status={col.status}
+                    ondragover={handleDragOver}
+                    ondragleave={handleDragLeave}
+                    ondrop={handleDrop}
+                >
+                    <div class="column-header">
+                        <span class={col.dotClass}></span>
+                        <span class="column-title">{col.status}</span>
+                        <span class="column-count">{col.count}</span>
+                        <template lwc:if={col.isDone}>
+                            <lightning-icon
+                                class="done-check"
+                                icon-name="utility:check"
+                                size="xx-small"
+                            ></lightning-icon>
+                        </template>
+                        <template lwc:if={col.hasPoints}>
+                            <span class="points column-points" title="Story points">{col.points}</span>
+                        </template>
+                    </div>
+                    <div class="column-body">
+                        <template for:each={col.cards} for:item="card">
+                            <div
+                                key={card.id}
+                                class={card.cardClass}
+                                data-id={card.id}
+                                draggable="true"
+                                ondragstart={handleDragStart}
+                                ondragend={handleDragEnd}
+                                onclick={handleCardClick}
+                            >
+                                <div class="card-summary">{card.summary}</div>
+                                <template lwc:if={card.epicId}>
+                                    <span class="epic-tag" style={card.epicStyle}>{card.epicName}</span>
+                                </template>
+                                <div class="card-footer">
+                                    <div class="card-footer-left">
+                                        <span class={card.typeClass} title={card.type}>
+                                            <lightning-icon
+                                                icon-name={card.typeIcon}
+                                                size="xx-small"
+                                                variant="inverse"
+                                            ></lightning-icon>
+                                        </span>
+                                        <span class={card.keyClass}>{card.key}</span>
+                                        <template lwc:if={card.overdue}>
+                                            <lightning-icon
+                                                class="overdue"
+                                                icon-name="utility:clock"
+                                                size="xx-small"
+                                                title="Overdue"
+                                            ></lightning-icon>
+                                        </template>
+                                        <template lwc:if={card.hasBrd}>
+                                            <span class="badge badge-brd" title="Has BRD">BRD</span>
+                                        </template>
+                                        <template lwc:if={card.hasTests}>
+                                            <span class={card.testsClass} title="Test cases passed"
+                                                >✓ {card.testsLabel}</span
+                                            >
+                                        </template>
+                                        <template lwc:if={card.hasAttachments}>
+                                            <span class="badge" title="Attachments">📎 {card.attachments}</span>
+                                        </template>
+                                    </div>
+                                    <div class="card-footer-right">
+                                        <template lwc:if={card.hasPoints}>
+                                            <span class="points" title="Story points">{card.points}</span>
+                                        </template>
+                                        <span class={card.prioClass} title={card.priority}>{card.prioGlyph}</span>
+                                        <template lwc:if={card.assigneeId}>
+                                            <span
+                                                class="avatar avatar-sm"
+                                                style={card.assigneeStyle}
+                                                title={card.assigneeName}
+                                                >{card.assigneeInitials}</span
+                                            >
+                                        </template>
+                                        <template lwc:else>
+                                            <span class="avatar avatar-sm avatar-empty" title="Unassigned">
+                                                <lightning-icon
+                                                    icon-name="utility:user"
+                                                    size="xx-small"
+                                                ></lightning-icon>
+                                            </span>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                        <div class={col.endClass}></div>
+                        <button class="create-inline" data-status={col.status} onclick={handleCreateInColumn}>
+                            <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
+                            Create issue
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</template>

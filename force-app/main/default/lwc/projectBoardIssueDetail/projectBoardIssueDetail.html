@@ -1,0 +1,656 @@
+<template>
+    <!-- ============================================================ CREATE -->
+    <template lwc:if={isCreate}>
+        <div class="jm-overlay">
+            <section
+                role="dialog"
+                tabindex="-1"
+                aria-modal="true"
+                aria-label="Create issue"
+                class="jm-dialog jm-dialog-medium modal-panel"
+                onkeydown={handleCreateKeydown}
+            >
+                <div class="modal-head">
+                    <span class="modal-title">Create issue</span>
+                    <button class="icon-btn" title="Close" onclick={close}>
+                        <lightning-icon icon-name="utility:close" size="x-small"></lightning-icon>
+                    </button>
+                </div>
+                <div class="modal-content">
+                    <template lwc:if={error}>
+                        <div class="form-error">{error}</div>
+                    </template>
+                    <div class="form-grid">
+                        <div class="full">
+                            <label class="field-label">Project</label>
+                            <div class="readonly">{projectName} ({projectKey})</div>
+                        </div>
+                        <div>
+                            <label class="field-label">Issue type <span class="req">*</span></label>
+                            <div class="select-with-icon">
+                                <span class={formTypeClass}>
+                                    <lightning-icon
+                                        icon-name={formTypeIcon}
+                                        size="xx-small"
+                                        variant="inverse"
+                                    ></lightning-icon>
+                                </span>
+                                <select class="field-select" data-field="Type__c" onchange={handleFormChange}>
+                                    <template for:each={formTypeOptions} for:item="o">
+                                        <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="field-label">Status</label>
+                            <select class="field-select" data-field="Status__c" onchange={handleFormChange}>
+                                <template for:each={formStatusOptions} for:item="o">
+                                    <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
+                                </template>
+                            </select>
+                        </div>
+                        <div class="full">
+                            <label class="field-label">Summary <span class="req">*</span></label>
+                            <input
+                                class="field-input create-summary"
+                                type="text"
+                                maxlength="255"
+                                data-field="Summary__c"
+                                value={form.Summary__c}
+                                oninput={handleFormChange}
+                            />
+                        </div>
+                        <div class="full">
+                            <label class="field-label">Description</label>
+                            <lightning-input-rich-text
+                                data-field="Description__c"
+                                value={form.Description__c}
+                                onchange={handleFormChange}
+                                label="Description"
+                            ></lightning-input-rich-text>
+                        </div>
+                        <div>
+                            <label class="field-label">Assignee</label>
+                            <lightning-record-picker
+                                object-api-name="User"
+                                label="Assignee"
+                                variant="label-hidden"
+                                placeholder="Search people..."
+                                value={form.Assignee__c}
+                                filter={userFilter}
+                                display-info={userDisplayInfo}
+                                matching-info={userMatchingInfo}
+                                onchange={handleFormAssignee}
+                            ></lightning-record-picker>
+                            <button class="btn btn-link btn-sm" onclick={assignFormToMe}>Assign to me</button>
+                        </div>
+                        <div>
+                            <label class="field-label">Priority</label>
+                            <select class="field-select" data-field="Priority__c" onchange={handleFormChange}>
+                                <template for:each={formPriorityOptions} for:item="o">
+                                    <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="field-label">Sprint</label>
+                            <select class="field-select" data-field="Sprint__c" onchange={handleFormChange}>
+                                <template for:each={formSprintOptions} for:item="o">
+                                    <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <template lwc:if={formCanHaveEpic}>
+                                <label class="field-label">Epic</label>
+                                <select class="field-select" data-field="Epic__c" onchange={handleFormChange}>
+                                    <template for:each={formEpicOptions} for:item="o">
+                                        <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
+                                    </template>
+                                </select>
+                            </template>
+                        </div>
+                        <div>
+                            <label class="field-label">Story points</label>
+                            <input
+                                class="field-input"
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                data-field="Story_Points__c"
+                                value={form.Story_Points__c}
+                                oninput={handleFormChange}
+                            />
+                        </div>
+                        <div>
+                            <label class="field-label">Due date</label>
+                            <input
+                                class="field-input"
+                                type="date"
+                                data-field="Due_Date__c"
+                                value={form.Due_Date__c}
+                                oninput={handleFormChange}
+                            />
+                        </div>
+                        <div class="full">
+                            <label class="field-label">Labels</label>
+                            <input
+                                class="field-input"
+                                type="text"
+                                maxlength="255"
+                                placeholder="Comma separated, e.g. frontend, urgent"
+                                data-field="Labels__c"
+                                value={form.Labels__c}
+                                oninput={handleFormChange}
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-foot">
+                    <template lwc:if={busy}>
+                        <lightning-spinner size="small" alternative-text="Saving"></lightning-spinner>
+                    </template>
+                    <button class="btn btn-subtle" onclick={close}>Cancel</button>
+                    <button class="btn btn-primary" disabled={busy} onclick={handleCreate}>Create</button>
+                </div>
+            </section>
+        </div>
+    </template>
+
+    <!-- ============================================================ VIEW / EDIT -->
+    <template lwc:else>
+        <div class="jm-overlay">
+            <section
+                role="dialog"
+                tabindex="-1"
+                aria-modal="true"
+                aria-label="Issue details"
+                class="jm-dialog jm-dialog-large modal-panel detail-panel"
+            >
+                <template lwc:if={hasIssue}>
+                    <div class="detail-top">
+                        <div class="crumbs">
+                            <span class="crumb">{projectKey}</span>
+                            <span class="crumb-sep">/</span>
+                            <template lwc:if={parentEpic}>
+                                <button class="crumb-link" data-id={parentEpic.id} onclick={openRelated}>
+                                    <span class="type-icon type-epic">
+                                        <lightning-icon
+                                            icon-name="utility:flash"
+                                            size="xx-small"
+                                            variant="inverse"
+                                        ></lightning-icon>
+                                    </span>
+                                    {parentEpic.label}
+                                </button>
+                                <span class="crumb-sep">/</span>
+                            </template>
+                            <span class={issue.typeClass} title={issue.type}>
+                                <lightning-icon
+                                    icon-name={issue.typeIcon}
+                                    size="xx-small"
+                                    variant="inverse"
+                                ></lightning-icon>
+                            </span>
+                            <span class="crumb-key">{issue.key}</span>
+                        </div>
+                        <div class="top-actions">
+                            <template lwc:if={busy}>
+                                <div class="mini-spinner">
+                                    <lightning-spinner size="x-small" alternative-text="Saving"></lightning-spinner>
+                                </div>
+                            </template>
+                            <button class="icon-btn" title="Delete issue" onclick={handleDelete}>
+                                <lightning-icon icon-name="utility:delete" size="x-small"></lightning-icon>
+                            </button>
+                            <button class="icon-btn" title="Close (Esc)" onclick={close}>
+                                <lightning-icon icon-name="utility:close" size="x-small"></lightning-icon>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class={bodyClass}>
+                        <!-- ---------- Main column -->
+                        <div class="detail-main">
+                            <template lwc:if={editingSummary}>
+                                <input
+                                    class="summary-input"
+                                    type="text"
+                                    maxlength="255"
+                                    value={summaryDraft}
+                                    oninput={handleSummaryInput}
+                                    onkeydown={handleSummaryKey}
+                                    onblur={commitSummary}
+                                />
+                            </template>
+                            <template lwc:else>
+                                <h2 class="summary" title="Click to edit" onclick={startEditSummary}>
+                                    {issue.summary}
+                                </h2>
+                            </template>
+
+                            <div class="doc-tabs">
+                                <template for:each={tabs} for:item="t">
+                                    <button key={t.value} class={t.cls} data-tab={t.value} onclick={handleTab}>
+                                        <lightning-icon icon-name={t.icon} size="xx-small"></lightning-icon>
+                                        <span>{t.label}</span>
+                                        <template lwc:if={t.badge}><span class="tab-badge">{t.badge}</span></template>
+                                    </button>
+                                </template>
+                            </div>
+
+                            <template lwc:if={isDetailsTab}>
+                                <div class="block">
+                                    <h3 class="block-title">Description</h3>
+                                    <template lwc:if={editingDescription}>
+                                        <lightning-input-rich-text
+                                            value={descriptionDraft}
+                                            onchange={handleDescriptionInput}
+                                            label="Description"
+                                        ></lightning-input-rich-text>
+                                        <div class="edit-actions">
+                                            <button class="btn btn-primary btn-sm" onclick={saveDescription}>
+                                                Save
+                                            </button>
+                                            <button class="btn btn-subtle btn-sm" onclick={cancelDescription}>
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <template lwc:else>
+                                        <div class="description" title="Click to edit" onclick={startEditDescription}>
+                                            <template lwc:if={issue.description}>
+                                                <lightning-formatted-rich-text
+                                                    value={issue.description}
+                                                ></lightning-formatted-rich-text>
+                                            </template>
+                                            <template lwc:else>
+                                                <span class="placeholder">Add a description...</span>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <template lwc:if={issue.isEpic}>
+                                    <div class="block">
+                                        <div class="block-head">
+                                            <h3 class="block-title">Child issues</h3>
+                                            <button class="btn btn-sm btn-subtle" onclick={createChild}>
+                                                <lightning-icon
+                                                    icon-name="utility:add"
+                                                    size="xx-small"
+                                                ></lightning-icon>
+                                                Add child issue
+                                            </button>
+                                        </div>
+                                        <template lwc:if={hasChildren}>
+                                            <div class="progress">
+                                                <div class="progress-bar" style={childSummary.style}></div>
+                                            </div>
+                                            <div class="progress-text">{childSummary.text}</div>
+                                            <div class="child-list">
+                                                <template for:each={children} for:item="child">
+                                                    <div
+                                                        key={child.id}
+                                                        class="child-row"
+                                                        data-id={child.id}
+                                                        onclick={openRelated}
+                                                    >
+                                                        <span class={child.typeClass}>
+                                                            <lightning-icon
+                                                                icon-name={child.typeIcon}
+                                                                size="xx-small"
+                                                                variant="inverse"
+                                                            ></lightning-icon>
+                                                        </span>
+                                                        <span class={child.keyClass}>{child.key}</span>
+                                                        <span class="child-summary">{child.summary}</span>
+                                                        <span class={child.prioClass}>{child.prioGlyph}</span>
+                                                        <template lwc:if={child.assigneeId}>
+                                                            <span
+                                                                class="avatar avatar-sm"
+                                                                style={child.assigneeStyle}
+                                                                title={child.assigneeName}
+                                                                >{child.assigneeInitials}</span
+                                                            >
+                                                        </template>
+                                                        <span class={child.statusClass}>{child.status}</span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <template lwc:else>
+                                            <div class="placeholder">No child issues yet.</div>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <div class="block">
+                                    <h3 class="block-title">Activity</h3>
+                                    <div class="tabs">
+                                        <button class={commentsTabClass} onclick={showComments}>Comments</button>
+                                        <button class={historyTabClass} onclick={showHistory}>History</button>
+                                    </div>
+
+                                    <template lwc:if={isCommentsTab}>
+                                        <div class="comment-new">
+                                            <span class="avatar" style={myAvatarStyle}>
+                                                <lightning-icon
+                                                    icon-name="utility:user"
+                                                    size="x-small"
+                                                    variant="inverse"
+                                                ></lightning-icon>
+                                            </span>
+                                            <div class="comment-editor">
+                                                <template lwc:if={commentEditing}>
+                                                    <lightning-input-rich-text
+                                                        value={commentDraft}
+                                                        onchange={handleCommentInput}
+                                                        label="Comment"
+                                                    ></lightning-input-rich-text>
+                                                    <div class="edit-actions">
+                                                        <button
+                                                            class="btn btn-primary btn-sm"
+                                                            disabled={busy}
+                                                            onclick={saveComment}
+                                                        >
+                                                            Save
+                                                        </button>
+                                                        <button class="btn btn-subtle btn-sm" onclick={cancelComment}>
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </template>
+                                                <template lwc:else>
+                                                    <div class="fake-input" onclick={startComment}>
+                                                        Add a comment...
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        <template for:each={commentRows} for:item="c">
+                                            <div key={c.id} class="comment">
+                                                <span class="avatar" style={c.style}>{c.initials}</span>
+                                                <div class="comment-content">
+                                                    <div class="comment-meta">
+                                                        <strong>{c.author}</strong>
+                                                        <lightning-relative-date-time
+                                                            value={c.createdDate}
+                                                        ></lightning-relative-date-time>
+                                                    </div>
+                                                    <lightning-formatted-rich-text
+                                                        value={c.body}
+                                                    ></lightning-formatted-rich-text>
+                                                    <template lwc:if={c.canDelete}>
+                                                        <button
+                                                            class="btn btn-link btn-sm comment-delete"
+                                                            data-id={c.id}
+                                                            onclick={handleDeleteComment}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </template>
+                                    <template lwc:else>
+                                        <template lwc:if={hasHistory}>
+                                            <template for:each={historyRows} for:item="h">
+                                                <div key={h.id} class="history">
+                                                    <span class="avatar avatar-sm" style={h.style}>{h.initials}</span>
+                                                    <div class="history-content">
+                                                        <div>
+                                                            <strong>{h.userName}</strong>
+                                                            <template lwc:if={h.isCreated}> created the issue</template>
+                                                            <template lwc:else>
+                                                                changed the <strong>{h.field}</strong></template
+                                                            >
+                                                            <span class="history-date">
+                                                                <lightning-relative-date-time
+                                                                    value={h.createdDate}
+                                                                ></lightning-relative-date-time>
+                                                            </span>
+                                                        </div>
+                                                        <template lwc:if={h.isChange}>
+                                                            <div class="history-change">
+                                                                <span class="history-old">{h.oldText}</span>
+                                                                <lightning-icon
+                                                                    icon-name="utility:forward"
+                                                                    size="xx-small"
+                                                                ></lightning-icon>
+                                                                <span class="history-new">{h.newText}</span>
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </template>
+                                        <template lwc:else>
+                                            <div class="placeholder">No history yet.</div>
+                                        </template>
+                                    </template>
+                                </div>
+                            </template>
+                            <template lwc:elseif={isBrdTab}>
+                                <c-project-board-brd
+                                    issue-id={issue.id}
+                                    issue={issue}
+                                    onchanged={handleDocsChanged}
+                                ></c-project-board-brd>
+                            </template>
+                            <template lwc:elseif={isTestsTab}>
+                                <c-project-board-test-scripts
+                                    issue-id={issue.id}
+                                    onchanged={handleDocsChanged}
+                                ></c-project-board-test-scripts>
+                            </template>
+                            <template lwc:else>
+                                <c-project-board-attachments
+                                    record-id={issue.id}
+                                    onchange={handleDocsChanged}
+                                ></c-project-board-attachments>
+                            </template>
+                        </div>
+
+                        <template lwc:if={isDetailsTab}>
+                            <!-- ---------- Side column -->
+                            <div class="detail-side">
+                                <select
+                                    class={statusSelectClass}
+                                    data-field="Status__c"
+                                    onchange={handleSelectChange}
+                                    title="Change status"
+                                >
+                                    <template for:each={statusOptions} for:item="o">
+                                        <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
+                                    </template>
+                                </select>
+
+                                <div class="details-box">
+                                    <div class="details-head">Details</div>
+
+                                    <div class="detail-row">
+                                        <label class="detail-label">Assignee</label>
+                                        <div class="detail-value">
+                                            <lightning-record-picker
+                                                object-api-name="User"
+                                                label="Assignee"
+                                                variant="label-hidden"
+                                                placeholder="Unassigned"
+                                                value={issue.assigneeId}
+                                                filter={userFilter}
+                                                display-info={userDisplayInfo}
+                                                matching-info={userMatchingInfo}
+                                                onchange={handleAssigneeChange}
+                                            ></lightning-record-picker>
+                                            <button class="btn btn-link btn-sm" onclick={assignToMe}>
+                                                Assign to me
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="detail-row">
+                                        <label class="detail-label">Reporter</label>
+                                        <div class="detail-value user-value">
+                                            <span class="avatar avatar-sm" style={issue.reporterStyle}
+                                                >{issue.reporterInitials}</span
+                                            >
+                                            <span>{issue.reporterName}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="detail-row">
+                                        <label class="detail-label">Priority</label>
+                                        <div class="detail-value select-with-icon">
+                                            <span class={issue.prioClass}>{issue.prioGlyph}</span>
+                                            <select
+                                                class="field-select"
+                                                data-field="Priority__c"
+                                                onchange={handleSelectChange}
+                                            >
+                                                <template for:each={priorityOptions} for:item="o">
+                                                    <option key={o.value} value={o.value} selected={o.selected}>
+                                                        {o.label}
+                                                    </option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="detail-row">
+                                        <label class="detail-label">Issue type</label>
+                                        <div class="detail-value select-with-icon">
+                                            <span class={issue.typeClass}>
+                                                <lightning-icon
+                                                    icon-name={issue.typeIcon}
+                                                    size="xx-small"
+                                                    variant="inverse"
+                                                ></lightning-icon>
+                                            </span>
+                                            <select
+                                                class="field-select"
+                                                data-field="Type__c"
+                                                onchange={handleSelectChange}
+                                            >
+                                                <template for:each={typeOptions} for:item="o">
+                                                    <option key={o.value} value={o.value} selected={o.selected}>
+                                                        {o.label}
+                                                    </option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="detail-row">
+                                        <label class="detail-label">Sprint</label>
+                                        <div class="detail-value">
+                                            <select
+                                                class="field-select"
+                                                data-field="Sprint__c"
+                                                onchange={handleSelectChange}
+                                            >
+                                                <template for:each={sprintOptions} for:item="o">
+                                                    <option key={o.value} value={o.value} selected={o.selected}>
+                                                        {o.label}
+                                                    </option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <template lwc:if={canHaveEpic}>
+                                        <div class="detail-row">
+                                            <label class="detail-label">Epic</label>
+                                            <div class="detail-value">
+                                                <select
+                                                    class="field-select"
+                                                    data-field="Epic__c"
+                                                    onchange={handleSelectChange}
+                                                >
+                                                    <template for:each={epicOptions} for:item="o">
+                                                        <option key={o.value} value={o.value} selected={o.selected}>
+                                                            {o.label}
+                                                        </option>
+                                                    </template>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <div class="detail-row">
+                                        <label class="detail-label">Story points</label>
+                                        <div class="detail-value">
+                                            <input
+                                                class="field-input"
+                                                type="number"
+                                                min="0"
+                                                step="0.5"
+                                                data-field="Story_Points__c"
+                                                value={pointsValue}
+                                                onblur={handleCommitField}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div class="detail-row">
+                                        <label class="detail-label">Due date</label>
+                                        <div class="detail-value">
+                                            <input
+                                                class="field-input"
+                                                type="date"
+                                                aria-label="Due date"
+                                                value={issue.dueDate}
+                                                onchange={handleDateChange}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div class="detail-row">
+                                        <label class="detail-label">Labels</label>
+                                        <div class="detail-value">
+                                            <input
+                                                class="field-input"
+                                                type="text"
+                                                maxlength="255"
+                                                placeholder="None"
+                                                data-field="Labels__c"
+                                                value={issue.labelsText}
+                                                onblur={handleCommitField}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="timestamps">
+                                    <div>
+                                        Created
+                                        <lightning-relative-date-time
+                                            value={issue.createdDate}
+                                        ></lightning-relative-date-time>
+                                    </div>
+                                    <div>
+                                        Updated
+                                        <lightning-relative-date-time
+                                            value={issue.lastModifiedDate}
+                                        ></lightning-relative-date-time>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+                <template lwc:else>
+                    <div class="modal-head">
+                        <span class="modal-title">Issue not found</span>
+                        <button class="icon-btn" title="Close" onclick={close}>
+                            <lightning-icon icon-name="utility:close" size="x-small"></lightning-icon>
+                        </button>
+                    </div>
+                    <div class="empty">This issue may have been deleted.</div>
+                </template>
+            </section>
+        </div>
+    </template>
+</template>

@@ -1,0 +1,55 @@
+<template>
+    <div class="attachments">
+        <div class="att-head">
+            <span class="att-title">{heading}</span>
+            <span class="att-count">{count}</span>
+        </div>
+
+        <div class="dropzone">
+            <lightning-file-upload
+                label={hint}
+                record-id={recordId}
+                accept={acceptedFormats}
+                multiple
+                onuploadfinished={handleUploadFinished}
+            ></lightning-file-upload>
+        </div>
+
+        <template lwc:if={hasFiles}>
+            <div class="file-grid">
+                <template for:each={rows} for:item="f">
+                    <div key={f.documentId} class="file-card">
+                        <a class="file-preview" href={f.url} target="_blank" rel="noopener" title={f.name}>
+                            <template lwc:if={f.isImage}>
+                                <img src={f.url} alt={f.name} loading="lazy" />
+                            </template>
+                            <template lwc:else>
+                                <lightning-icon icon-name={f.icon} size="large"></lightning-icon>
+                            </template>
+                        </a>
+                        <div class="file-info">
+                            <a class="file-name" href={f.url} target="_blank" rel="noopener" title={f.name}>{f.name}</a>
+                            <div class="file-meta">
+                                {f.meta} ·
+                                <lightning-relative-date-time value={f.createdDate}></lightning-relative-date-time>
+                            </div>
+                        </div>
+                        <div class="file-actions">
+                            <a class="icon-btn" href={f.url} target="_blank" rel="noopener" title="Download">
+                                <lightning-icon icon-name="utility:download" size="x-small"></lightning-icon>
+                            </a>
+                            <template lwc:if={f.canDelete}>
+                                <button class="icon-btn" title="Delete" data-id={f.documentId} onclick={handleDelete}>
+                                    <lightning-icon icon-name="utility:delete" size="x-small"></lightning-icon>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+        <template lwc:elseif={loading}>
+            <div class="att-empty">Loading…</div>
+        </template>
+    </div>
+</template>
