@@ -12,6 +12,17 @@ This is a neutral open-source reference. It rewrites patterns I built in enterpr
 | **Contract sync pattern** | A Queueable and a Schedulable run an incremental sync with a watermark and an upsert on an external id. The sync reads a `ContractFeed.Source` interface. This repository only ships a **mock** source (static-resource JSON), so it makes no callouts. |
 | **Before-save Flow** | `Campaign_Set_Name` builds a consistent Campaign name. It is bulk-safe and uses no SOQL or DML. |
 
+## Screenshots
+
+Captured in a Developer Edition org with the demo data (fictitious companies and people).
+
+| | |
+| --- | --- |
+| ![Record type step](docs/images/01-contact-record-type.png) Step 1: record types from Custom Metadata | ![Identify step](docs/images/02-contact-identify.png) Identify: Contacts and Leads scored as you type |
+| ![Review values](docs/images/03-contact-review.png) Review: pick the value to keep per field | ![Form](docs/images/04-contact-form.png) Form: merge summary and Account suggestion from the Lead company |
+| ![Opportunity details](docs/images/05-opportunity-details.png) Opportunity: configured fields, Account limited by record type | ![Products](docs/images/06-opportunity-products.png) Products: country price book, per-line Line Type, live total |
+| ![Campaign form](docs/images/07-campaign-form.png) Campaign: the Flow builds the name from Region and Campaign Name | |
+
 ## Architecture
 
 ```mermaid
