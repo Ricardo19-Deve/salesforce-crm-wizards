@@ -18,8 +18,8 @@ Show the architecture diagram in the README.
 
 Follow the "Demo script" in the README:
 
-1. Search as you type finds Maria Santos as 2 Contacts and 1 Lead, with a score and the fields that matched.
-2. In the review, choose the value to keep for each field. On save, one Contact remains, the Lead is converted and the second Account is linked.
+1. Search as you type finds Maria Santos as 2 Contacts and 1 Lead, most similar first, with the fields that matched. Users see no percentages: the weights only rank the results.
+2. In the review, choose the value to keep for each field. The Accounts section separates the one Principal Account from any number of Related Accounts. The Summary shows what will be kept, merged and converted before anything is saved.
 3. Only a Lead exists for Tomas Novak: the wizard creates the Contact, converts the Lead and suggests the Account from the Company name.
 4. A duplicate rule returns the matches to the UI, with "Save anyway" or "Merge".
 5. In the Opportunity wizard, the price book changes with the country (Portugal, Spain, default). The products, the server-set stage and the line type are all saved in one transaction.

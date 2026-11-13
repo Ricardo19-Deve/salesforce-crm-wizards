@@ -86,59 +86,77 @@
                     </div>
                 </template>
 
-                <template if:true={hasSuggestions}>
+                <template if:true={showAccountsSection}>
                     <section class="card">
-                        <h2 class="section-title">Suggested Accounts (from the Lead company)</h2>
-                        <div class="suggestion-grid">
-                            <template for:each={suggestionRows} for:item="sug">
-                                <button key={sug.accountId} class={sug.cssClass} data-id={sug.accountId} onclick={handleSuggestionClick}>
-                                    <strong>{sug.name}</strong>
-                                    <template if:true={sug.badge}><span class="rt-default">{sug.badge}</span></template>
-                                    <small>{sug.detail}</small>
-                                </button>
+                        <h2 class="section-title">Accounts</h2>
+                        <template if:true={hasSuggestions}>
+                            <div class="section-eyebrow">SUGGESTED FROM THE LEAD COMPANY</div>
+                            <div class="suggestion-grid">
+                                <template for:each={suggestionRows} for:item="sug">
+                                    <button key={sug.accountId} class={sug.cssClass} data-id={sug.accountId} onclick={handleSuggestionClick}>
+                                        <strong>{sug.name}</strong>
+                                        <template if:true={sug.badge}><span class="rt-default">{sug.badge}</span></template>
+                                        <small>{sug.detail}</small>
+                                    </button>
+                                </template>
+                            </div>
+                            <p class="merge-hint">Click a suggestion to add it: the first one becomes the principal Account, the next ones Related Accounts.</p>
+                        </template>
+
+                        <div class="account-block">
+                            <div class="account-block-title">
+                                <strong>Principal Account</strong>
+                                <span class="account-block-hint">Only one · becomes the Contact's Account Name</span>
+                            </div>
+                            <template if:true={principalRow}>
+                                <div class="account-row account-row-principal">
+                                    <lightning-icon icon-name="standard:account" size="small" alternative-text="Account"></lightning-icon>
+                                    <div class="account-main">
+                                        <a href={principalRow.url} target="_blank">{principalRow.name}</a>
+                                        <small>{principalRow.detail}</small>
+                                    </div>
+                                    <span class="principal-badge">Principal</span>
+                                    <lightning-button-icon icon-name="utility:close" variant="bare" alternative-text="Remove"
+                                        title="Remove" data-id={principalRow.id} onclick={handleRemoveAccount}></lightning-button-icon>
+                                </div>
+                            </template>
+                            <template if:false={principalRow}>
+                                <div class="account-add">
+                                    <lightning-record-picker label="Principal Account" variant="label-hidden"
+                                        placeholder="Search the principal Account..." object-api-name="Account"
+                                        filter={accountField.lookupFilter} onchange={handleAccountPicked}></lightning-record-picker>
+                                </div>
                             </template>
                         </div>
-                        <p class="merge-hint">Click an Account to use it as the principal Account (Account Name).</p>
-                    </section>
-                </template>
 
-                <template if:true={hasRelatedAccounts}>
-                    <section class="card">
-                        <h2 class="section-title">Related Accounts</h2>
-                        <template for:each={relatedAccountRows} for:item="acc">
-                            <div key={acc.id} class="related-row">
-                                <lightning-input type="checkbox" label="Link" variant="label-hidden" checked={acc.checked}
-                                    data-id={acc.id} onchange={handleRelatedToggle}></lightning-input>
-                                <a href={acc.url} target="_blank">{acc.name}</a>
+                        <template if:true={supportsRelated}>
+                            <div class="account-block">
+                                <div class="account-block-title">
+                                    <strong>Related Accounts ({relatedCount})</strong>
+                                    <span class="account-block-hint">Optional · add as many as needed</span>
+                                </div>
+                                <template for:each={relatedRows} for:item="acc">
+                                    <div key={acc.id} class="account-row">
+                                        <lightning-icon icon-name="standard:account" size="small" alternative-text="Account"></lightning-icon>
+                                        <div class="account-main">
+                                            <a href={acc.url} target="_blank">{acc.name}</a>
+                                            <small>{acc.detail}</small>
+                                        </div>
+                                        <lightning-button label="Make principal" variant="base" data-id={acc.id}
+                                            onclick={handlePrincipalChange}></lightning-button>
+                                        <lightning-button-icon icon-name="utility:close" variant="bare" alternative-text="Remove"
+                                            title="Remove" data-id={acc.id} onclick={handleRemoveAccount}></lightning-button-icon>
+                                    </div>
+                                </template>
+                                <div class="account-add">
+                                    <lightning-record-picker label="Add a related Account" variant="label-hidden"
+                                        placeholder="Search to add a related Account..." object-api-name="Account"
+                                        filter={accountField.lookupFilter} onchange={handleAccountPicked}></lightning-record-picker>
+                                </div>
+                                <p class="merge-hint">Related Accounts are linked to the Contact next to the principal Account (indirect relationships). Add one, then search again to add another.</p>
                             </div>
                         </template>
-                        <p class="merge-hint">Checked Accounts are linked to the Contact as Related Accounts (indirect), next to the principal Account.</p>
                     </section>
-                </template>
-
-                <template if:true={duplicateOutcome}>
-                    <div class="duplicate-note" role="alert">
-                        <div class="duplicate-title">
-                            <lightning-icon icon-name="utility:warning" size="small" variant="warning" alternative-text="Duplicates"></lightning-icon>
-                            <strong>{duplicateOutcome.message}</strong>
-                        </div>
-                        <ul class="duplicate-list">
-                            <template for:each={duplicateRows} for:item="dup">
-                                <li key={dup.recordId}>
-                                    <a href={dup.url} target="_blank">{dup.name}</a>
-                                    <template if:true={dup.detail}><span class="duplicate-detail">&nbsp;· {dup.detail}</span></template>
-                                </li>
-                            </template>
-                        </ul>
-                        <div class="action-buttons">
-                            <template if:true={canMerge}>
-                                <lightning-button label="Merge with existing" variant="brand" icon-name="utility:merge" onclick={handleOpenMerge} disabled={isSaving}></lightning-button>
-                            </template>
-                            <template if:true={duplicateOutcome.canSaveAnyway}>
-                                <lightning-button label="Save anyway" variant="brand-outline" onclick={handleSaveAnyway} disabled={isSaving}></lightning-button>
-                            </template>
-                        </div>
-                    </div>
                 </template>
 
                 <template if:true={saveError}>
@@ -180,8 +198,8 @@
                             icon-position="right" onclick={handleNext}></lightning-button>
                     </template>
                     <template if:true={isLastPage}>
-                        <lightning-button variant="brand" label={saveLabel} onclick={handleSave}
-                            disabled={isSaving}></lightning-button>
+                        <lightning-button variant="brand" label="Next: summary" icon-name="utility:forward"
+                            icon-position="right" onclick={handleShowSummary}></lightning-button>
                     </template>
                 </span>
             </footer>
@@ -190,7 +208,7 @@
         <template if:true={showIdentifyStep}>
             <main class="content">
                 <section class="card">
-                    <div class="section-eyebrow">FIND EXISTING RECORDS</div>
+                    <div class="section-eyebrow">CONTACT CREATION</div>
                     <div class="field-grid">
                         <template for:each={identifyInputs} for:item="inp">
                             <div key={inp.apiName} class="field-tile">
@@ -223,14 +241,13 @@
                     <section class="card">
                         <h2 class="section-title">Existing records</h2>
                         <template if:false={hasCandidates}>
-                            <p>No existing Contact or Lead reaches {minimumScore}%. A new Contact will be created.</p>
+                            <p>No similar Contact or Lead was found. A new Contact will be created.</p>
                         </template>
                         <template if:true={hasCandidates}>
                             <template for:each={candidateRows} for:item="cand">
                                 <div key={cand.recordId} class={cand.rowClass}>
                                     <lightning-input type="checkbox" label={cand.action} variant="label-hidden" checked={cand.selected} disabled={cand.disabled}
                                         data-id={cand.recordId} data-type={cand.recordType} onchange={handleCandidateToggle}></lightning-input>
-                                    <span class={cand.scoreClass}>{cand.score}%</span>
                                     <lightning-icon icon-name={cand.icon} size="small" alternative-text={cand.recordType}></lightning-icon>
                                     <div class="candidate-main">
                                         <a href={cand.url} target="_blank"><strong>{cand.name}</strong></a>
@@ -323,6 +340,117 @@
                     <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
                     <lightning-button variant="brand" label="Continue" icon-name="utility:forward" icon-position="right"
                         onclick={handleReviewContinue} disabled={isLoadingReview}></lightning-button>
+                </span>
+            </footer>
+        </template>
+
+        <template if:true={showSummaryStep}>
+            <main class="content">
+                <section class="card">
+                    <div class="section-eyebrow">SUMMARY</div>
+                    <h2>Check the final values before saving</h2>
+                    <p class="summary-headline">{summaryHeadline}</p>
+                    <template if:true={hasSummaryGroups}>
+                        <template for:each={summaryGroups} for:item="group">
+                            <div key={group.key} class="summary-group">
+                                <div class="summary-group-title">{group.title} <span class="summary-count">{group.count}</span></div>
+                                <div class="summary-table" role="table">
+                                    <div class="summary-table-row summary-table-head" role="row">
+                                        <span role="columnheader">Name</span>
+                                        <span role="columnheader">Email</span>
+                                        <span role="columnheader">Account / Company</span>
+                                    </div>
+                                    <template for:each={group.rows} for:item="r">
+                                        <div key={r.id} class="summary-table-row" role="row">
+                                            <a href={r.url} target="_blank" role="cell">{r.name}</a>
+                                            <span role="cell">{r.email}</span>
+                                            <span role="cell">{r.account}</span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </template>
+                </section>
+
+                <template if:true={manageAccounts}>
+                    <section class="card">
+                        <h2 class="section-title">Accounts</h2>
+                        <div class="summary-grid">
+                            <div class="summary-row">
+                                <span class="summary-label">Principal Account</span>
+                                <span class="summary-value">
+                                    <template if:true={principalRow}>{principalRow.name} <small>{principalRow.detail}</small></template>
+                                </span>
+                            </div>
+                            <template if:true={supportsRelated}>
+                                <div class="summary-row">
+                                    <span class="summary-label">Related Accounts</span>
+                                    <span class="summary-value">
+                                        <template if:true={hasSummaryRelated}>
+                                            <template for:each={summaryRelated} for:item="acc">
+                                                <span key={acc.id} class="summary-chip">{acc.name}</span>
+                                            </template>
+                                        </template>
+                                        <template if:false={hasSummaryRelated}><span class="summary-value-empty">None</span></template>
+                                    </span>
+                                </div>
+                            </template>
+                        </div>
+                    </section>
+                </template>
+
+                <template for:each={summarySections} for:item="section">
+                    <section key={section.key} class="card">
+                        <h2 class="section-title">{section.name}</h2>
+                        <div class="summary-grid">
+                            <template for:each={section.rows} for:item="row">
+                                <div key={row.key} class="summary-row">
+                                    <span class="summary-label">{row.label}</span>
+                                    <span class={row.valueClass}>{row.value}</span>
+                                </div>
+                            </template>
+                        </div>
+                    </section>
+                </template>
+
+                <template if:true={duplicateOutcome}>
+                    <div class="duplicate-note" role="alert">
+                        <div class="duplicate-title">
+                            <lightning-icon icon-name="utility:warning" size="small" variant="warning" alternative-text="Duplicates"></lightning-icon>
+                            <strong>{duplicateOutcome.message}</strong>
+                        </div>
+                        <ul class="duplicate-list">
+                            <template for:each={duplicateRows} for:item="dup">
+                                <li key={dup.recordId}>
+                                    <a href={dup.url} target="_blank">{dup.name}</a>
+                                    <template if:true={dup.detail}><span class="duplicate-detail">&nbsp;· {dup.detail}</span></template>
+                                </li>
+                            </template>
+                        </ul>
+                        <div class="action-buttons">
+                            <template if:true={canMerge}>
+                                <lightning-button label="Merge with existing" variant="brand" icon-name="utility:merge" onclick={handleOpenMerge} disabled={isSaving}></lightning-button>
+                            </template>
+                            <template if:true={duplicateOutcome.canSaveAnyway}>
+                                <lightning-button label="Save anyway" variant="brand-outline" onclick={handleSaveAnyway} disabled={isSaving}></lightning-button>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <template if:true={saveError}>
+                    <div class="save-error" role="alert">
+                        <lightning-icon icon-name="utility:error" size="small" variant="error" alternative-text="Error"></lightning-icon>
+                        <span>{saveError}</span>
+                    </div>
+                </template>
+            </main>
+            <footer class="sticky-actions">
+                <lightning-button label="Back to edit" icon-name="utility:edit" onclick={handleEditFromSummary} disabled={isSaving}></lightning-button>
+                <span class="action-buttons">
+                    <lightning-button label="Cancel" onclick={handleCancel} disabled={isSaving}></lightning-button>
+                    <lightning-button variant="brand" label={saveLabel} onclick={handleSave} disabled={isSaving}></lightning-button>
                 </span>
             </footer>
         </template>

@@ -2,7 +2,8 @@
  * Server API of the record wizard (LWC recordWizard). Thin layer: checks access, resolves the configured object
  * and record type, delegates to the services and turns WizardException into messages for the user.
  *
- * Flow in the UI: record type -> (Contact) Identify -> (records picked) Review values -> form pages -> done.
+ * Flow in the UI: record type -> (Contact) Contact creation / identify -> (records picked) Review values -> form pages
+ * (Contact: Accounts list with one principal + Related Accounts) -> Summary -> done.
  * Everything the user sees is configured in Custom Metadata, see WizardConfig.
  *
  * Access: custom permission Use_Record_Wizard (permission set Record_Wizard_User).
@@ -79,6 +80,43 @@ public with sharing class RecordWizardController {
         } catch (WizardException e) {
             throw auraError(e);
         }
+    }
+
+    // Names (and city / country for Accounts) of records chosen in record pickers, for the Accounts list and the
+    // Summary step. Read in user mode: the user only gets names of records they can already see.
+    @AuraEnabled
+    public static List<ContactMergeService.RecordSummary> describeRecords(List<Id> recordIds) {
+        List<ContactMergeService.RecordSummary> result = new List<ContactMergeService.RecordSummary>();
+        if (recordIds == null || recordIds.isEmpty()) return result;
+        if (recordIds.size() > 50) {
+            throw auraError('Too many records to describe.');
+        }
+        Map<Schema.SObjectType, Set<Id>> idsByType = new Map<Schema.SObjectType, Set<Id>>();
+        for (Id recordId : recordIds) {
+            if (recordId == null) continue;
+            if (!idsByType.containsKey(recordId.getSObjectType())) idsByType.put(recordId.getSObjectType(), new Set<Id>());
+            idsByType.get(recordId.getSObjectType()).add(recordId);
+        }
+        for (Schema.SObjectType objectType : idsByType.keySet()) {
+            Schema.DescribeSObjectResult objectDescribe = objectType.getDescribe();
+            if (!objectDescribe.fields.getMap().containsKey('name')) continue;
+            Boolean isAccount = objectType == Account.SObjectType;
+            for (SObject row : Database.queryWithBinds(
+                'SELECT Id, Name' + (isAccount ? ', BillingCity, BillingCountry' : '') + ' FROM ' + objectDescribe.getName() +
+                ' WHERE Id IN :ids', new Map<String, Object>{ 'ids' => idsByType.get(objectType) }, AccessLevel.USER_MODE
+            )) {
+                ContactMergeService.RecordSummary item = new ContactMergeService.RecordSummary();
+                item.recordId = row.Id;
+                item.recordType = objectDescribe.getName();
+                item.name = String.valueOf(row.get('Name'));
+                if (isAccount) {
+                    item.detail = ContactMatchService.joinParts(
+                        new List<String>{ (String) row.get('BillingCity'), (String) row.get('BillingCountry') });
+                }
+                result.add(item);
+            }
+        }
+        return result;
     }
 
     // leadIds = Leads to convert into the new Contact; relatedAccountIds = Accounts linked as Related Accounts.

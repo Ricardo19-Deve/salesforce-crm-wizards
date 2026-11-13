@@ -188,8 +188,9 @@ public with sharing class ContactMergeService {
         return masterId;
     }
 
-    // relatedAccountIds come from the browser and must be eligible Accounts; trustedAccountIds (Accounts of the
-    // merged Contacts) are kept as they are.
+    // relatedAccountIds = the Accounts the user kept in the list (the principal one excluded). They come from the
+    // browser, so they must be eligible Accounts; trustedAccountIds (Accounts of the merged Contacts) skip that check.
+    // Only the Accounts in the list are linked: the user may remove an Account of a merged Contact.
     public void finishContact(
         Id contactId, WizardConfig.RecordTypeOption recordType, List<Id> leadIds, List<Id> relatedAccountIds,
         Set<Id> trustedAccountIds, Boolean allowDuplicates
@@ -198,22 +199,19 @@ public with sharing class ContactMergeService {
             new Map<String, Object>{ 'contactId' => contactId })[0];
         dml.convertLeadsInto(saved.Id, saved.AccountId, leadIds, allowDuplicates);
 
-        Set<Id> requested = relatedAccountIds == null ? new Set<Id>() : new Set<Id>(relatedAccountIds);
-        requested.remove(saved.AccountId);
-        requested.remove(null);
-        if (trustedAccountIds != null) requested.removeAll(trustedAccountIds);
+        Set<Id> accounts = relatedAccountIds == null ? new Set<Id>() : new Set<Id>(relatedAccountIds);
+        accounts.remove(saved.AccountId);
+        accounts.remove(null);
+        Set<Id> toValidate = new Set<Id>(accounts);
+        if (trustedAccountIds != null) toValidate.removeAll(trustedAccountIds);
         Set<Id> allowed = ContactMatchService.allowedAccountRecordTypes(recordType);
-        if (!allowed.isEmpty() && !requested.isEmpty()) {
+        if (!allowed.isEmpty() && !toValidate.isEmpty()) {
             Integer valid = dml.query('SELECT Id FROM Account WHERE Id IN :ids AND RecordTypeId IN :allowed',
-                new Map<String, Object>{ 'ids' => requested, 'allowed' => allowed }).size();
-            if (valid != requested.size()) {
+                new Map<String, Object>{ 'ids' => toValidate, 'allowed' => allowed }).size();
+            if (valid != toValidate.size()) {
                 throw new WizardException('One of the related Accounts is not allowed in this wizard.');
             }
         }
-        Set<Id> accounts = new Set<Id>(requested);
-        if (trustedAccountIds != null) accounts.addAll(trustedAccountIds);
-        accounts.remove(saved.AccountId);
-        accounts.remove(null);
         dml.linkAccounts(saved.Id, accounts);
     }
 

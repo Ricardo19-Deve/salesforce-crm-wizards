@@ -232,6 +232,24 @@ private class RecordWizardControllerTest {
     }
 
     @IsTest
+    static void describeRecordsReturnsNamesAndPlace() {
+        Id acmeId = accountId('Northwind Traders');
+        List<ContactMergeService.RecordSummary> rows = RecordWizardController.describeRecords(new List<Id>{ acmeId, null });
+        Assert.areEqual(1, rows.size());
+        Assert.areEqual('Northwind Traders', rows[0].name);
+        Assert.areEqual('Portugal', rows[0].detail);
+        Assert.isTrue(RecordWizardController.describeRecords(null).isEmpty());
+        List<Id> tooMany = new List<Id>();
+        for (Integer i = 0; i < 51; i++) tooMany.add(acmeId);
+        try {
+            RecordWizardController.describeRecords(tooMany);
+            Assert.fail('More than 50 records are rejected');
+        } catch (AuraHandledException e) {
+            Assert.isTrue(e.getMessage().contains('Too many'));
+        }
+    }
+
+    @IsTest
     static void matchingHelpers() {
         Assert.isTrue(ContactMatchService.variants('ana silva').contains('Ana Silva'));
         Assert.isTrue(ContactMatchService.sameValue('+351 912 000 001', '351912000001'));

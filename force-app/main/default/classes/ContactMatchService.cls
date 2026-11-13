@@ -28,6 +28,7 @@ public with sharing class ContactMatchService {
         @AuraEnabled public Id accountId;        // Contact account, or the Account whose name equals the Lead Company
         @AuraEnabled public String accountName;
         @AuraEnabled public String company;      // Lead Company (free text), used for Account suggestions
+        @AuraEnabled public String email;
     }
 
     public class MatchResult {
@@ -108,6 +109,7 @@ public with sharing class ContactMatchService {
             candidate.name = c.Name;
             candidate.accountId = c.AccountId;
             candidate.accountName = c.Account?.Name;
+            candidate.email = c.Email;
             candidate.detail = joinParts(new List<String>{ c.Email, c.Account?.Name, c.RecordType?.Name });
             result.candidates.add(candidate);
         }
@@ -134,6 +136,7 @@ public with sharing class ContactMatchService {
                 candidate.accountId = companyAccount?.Id;
                 candidate.accountName = companyAccount?.Name;
                 candidate.company = l.Company;
+                candidate.email = l.Email;
                 candidate.detail = joinParts(new List<String>{ l.Email, l.Company });
                 result.candidates.add(candidate);
             }

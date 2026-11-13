@@ -34,6 +34,8 @@
 ## LWC
 
 - **`recordWizard`:** a URL-addressable component (`lightning__UrlAddressable`), so no Aura wrapper is needed. `c__session` in the URL resets the wizard on every click of the list button.
+  - Contact: the Account Name field is replaced by an Accounts section (one Principal Account = `AccountId`, any number of Related Accounts sent as `relatedAccountIds`). Only the Accounts left in the list are linked.
+  - A Summary step shows the final values (`describeRecords` resolves lookup names in user mode) and groups the records kept, merged and converted, before calling `createRecord` or `mergeContacts`.
 - **`opportunityWizard`:** the same pattern, with a products step that searches, filters by family, edits lines and shows the total.
 - **`wizardFieldInput`:** renders one configured field with the right base component, including dependent picklists, multi-select, record pickers filtered by record type, dates and numbers.
 - **`wizardFieldUtils`:** pure functions covered by Jest. They resolve fields, build sections and the payload, and turn errors into messages.

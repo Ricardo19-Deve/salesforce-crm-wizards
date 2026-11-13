@@ -7,7 +7,7 @@ This is a neutral open-source reference. It rewrites patterns I built in enterpr
 | Module | What it shows |
 | --- | --- |
 | **Record wizard** (Contact, Campaign) | Admins configure record types, fields, pages, sections, labels and duplicate-match weights in Custom Metadata, with no code changes. |
-| **Contact identify & merge** | Search as you type with weighted scoring across Contacts and unconverted Leads. A field-by-field review lets the user merge up to 3 Contacts, convert the chosen Leads into the kept Contact and link related Accounts. Duplicate rules are handled with "Save anyway" and "Merge with existing". |
+| **Contact creation, merge & conversion** | Search as you type across Contacts and unconverted Leads (configurable weights rank the results; no scores are shown to users). A field-by-field review lets the user merge up to 3 Contacts and convert the chosen Leads into the kept Contact. An Accounts section has one **Principal Account** and any number of **Related Accounts**, with suggestions from the Lead company. A **Summary** step shows the final values and the records kept, merged and converted before saving. Duplicate rules are handled with "Save anyway" and "Merge with existing". |
 | **Opportunity + products wizard** | The price book is chosen from the Account's country (rule-based, with a fallback). The wizard saves the Opportunity and its lines in one transaction. The server decides the stage, price book and currency. |
 | **Contract sync pattern** | A Queueable and a Schedulable run an incremental sync with a watermark and an upsert on an external id. The sync reads a `ContractFeed.Source` interface. This repository only ships a **mock** source (static-resource JSON), so it makes no callouts. |
 | **Before-save Flow** | `Campaign_Set_Name` builds a consistent Campaign name. It is bulk-safe and uses no SOQL or DML. |
@@ -18,8 +18,9 @@ Captured in a Developer Edition org with the demo data (fictitious companies and
 
 | | |
 | --- | --- |
-| ![Record type step](docs/images/01-contact-record-type.png) Step 1: record types from Custom Metadata | ![Identify step](docs/images/02-contact-identify.png) Identify: Contacts and Leads scored as you type |
-| ![Review values](docs/images/03-contact-review.png) Review: pick the value to keep per field | ![Form](docs/images/04-contact-form.png) Form: merge summary and Account suggestion from the Lead company |
+| ![Record type step](docs/images/01-contact-record-type.png) Step 1: record types from Custom Metadata | ![Contact creation step](docs/images/02-contact-identify.png) Contact creation: similar Contacts and Leads appear as you type |
+| ![Review values](docs/images/03-contact-review.png) Review: pick the value to keep per field | ![Form](docs/images/04-contact-form.png) Form: Accounts section with Lead suggestions and the Principal Account |
+| ![Summary](docs/images/08-contact-summary.png) Summary: records kept / merged / converted and final values | |
 | ![Opportunity details](docs/images/05-opportunity-details.png) Opportunity: configured fields, Account limited by record type | ![Products](docs/images/06-opportunity-products.png) Products: country price book, per-line Line Type, live total |
 | ![Campaign form](docs/images/07-campaign-form.png) Campaign: the Flow builds the name from Region and Campaign Name | |
 
@@ -94,10 +95,12 @@ Optional settings:
 ## Demo script (5 minutes)
 
 1. **New Contact (Wizard).** Choose *Customer Contact* and type `maria.santos@northwind.example`.
-   - Two Contacts and one Lead appear, each with a score and the fields that matched or differed.
+   - Two Contacts and one Lead appear, most similar first, with the fields that matched or differed.
 2. **Merge and convert.** Tick both Contacts and the Lead, then choose **Review values**.
-   - Pick the value to keep for each field, then continue to the form and save.
-   - Result: one Contact, the other merged into it, the Lead converted into it, and the second Account linked as a Related Account.
+   - Pick the value to keep for each field and continue to the form.
+   - In **Accounts**, the Principal Account is already chosen. With *Contacts to Multiple Accounts* enabled, the other Contact's Account appears under **Related Accounts**, and you can add more or use **Make principal**.
+   - **Next: summary** shows the Contact kept, the Contact merged, the Lead converted and every final value. **Back to edit** returns to the form.
+   - Save: one Contact remains, the other is merged into it, the Lead is converted into it and the Related Accounts are linked.
 3. **New Contact for `tomas.novak@fabrikam.example`.** Only a Lead exists for this person.
    - The wizard suggests the Account *Fabrikam Inc* from the Lead's Company.
 4. **Duplicate rule.** Create a Contact with an email that already exists.

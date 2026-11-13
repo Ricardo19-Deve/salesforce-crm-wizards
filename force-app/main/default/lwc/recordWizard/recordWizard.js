@@ -3,8 +3,10 @@
  * Open it with /lightning/cmp/c__recordWizard?c__object=Contact&c__session=<anything unique>
  * (list buttons Wizard_New_Contact / Wizard_New_Campaign do this).
  *
- * Steps: record type -> identify (Contact: search as you type, tick up to 3 Contacts to merge and Leads to
- * convert) -> review values (pick the value to keep per field) -> form pages -> done.
+ * Steps: record type -> Contact creation (search as you type, no scores shown; tick up to 3 Contacts to merge and
+ * Leads to convert) -> review values (pick the value to keep per field) -> form pages (Contact: Accounts section =
+ * Lead suggestions, one Principal Account = Account Name, any number of Related Accounts) -> summary (grouped
+ * kept / merged / converted records + final values, Back to edit) -> done.
  * Server: RecordWizardController. Field rendering is generic: picklists (incl. dependent), multi-select, lookups
  * with record type filters, checkboxes, dates, numbers. Wire results are kept on reset for the same object:
  * wires do not provision again with unchanged parameters, clearing them would leave an endless spinner.
@@ -23,12 +25,14 @@ import suggestAccounts from '@salesforce/apex/RecordWizardController.suggestAcco
 import createRecord from '@salesforce/apex/RecordWizardController.createRecord';
 import getMergeData from '@salesforce/apex/RecordWizardController.getMergeData';
 import mergeContacts from '@salesforce/apex/RecordWizardController.mergeContacts';
+import describeRecords from '@salesforce/apex/RecordWizardController.describeRecords';
 import supportsRelatedAccounts from '@salesforce/apex/RecordWizardController.supportsRelatedAccounts';
 
 const STEP_RECORD_TYPE = 'recordType';
 const STEP_IDENTIFY = 'identify';
 const STEP_REVIEW = 'review';
 const STEP_FORM = 'form';
+const STEP_SUMMARY = 'summary';
 const STEP_DONE = 'done';
 const MAX_MERGE = 3;
 
@@ -68,7 +72,11 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
 
     // Accounts
     accountSuggestions = [];
-    relatedAccounts = [];
+    // Contact: every Account in the list is linked; the principal one is Account Name, the others Related Accounts.
+    accountList = [];
+    principalAccountId;
+    // Names of records chosen in lookups, shown in the Summary step.
+    recordNames = {};
 
     duplicateOutcome;
     wasMerged = false;
@@ -187,7 +195,9 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         this.reviewChoices = {};
         this.reviewError = undefined;
         this.accountSuggestions = [];
-        this.relatedAccounts = [];
+        this.accountList = [];
+        this.principalAccountId = undefined;
+        this.recordNames = {};
         this.duplicateOutcome = undefined;
         this.wasMerged = false;
         if (!this.accessDenied) this.loadError = undefined;
@@ -322,7 +332,6 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
                 icon: isContact ? 'standard:contact' : 'standard:lead',
                 action: isContact ? 'Merge' : 'Convert',
                 url: `/lightning/r/${c.recordType}/${c.recordId}/view`,
-                scoreClass: c.score >= 80 ? 'score score-high' : c.score >= 50 ? 'score score-medium' : 'score score-low',
                 matchedText: (c.matched || []).join(', '),
                 notMatchedText: (c.notMatched || []).join(', '),
                 rowClass: selected ? 'candidate candidate-selected' : 'candidate'
@@ -381,6 +390,9 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
     async handleIdentifyContinue() {
         this.seedFromIdentify();
         if (!this.hasSelection) {
+            this.accountList = [];
+            this.principalAccountId = undefined;
+            await this.addAccounts(this.fieldValues.AccountId ? [{ id: this.fieldValues.AccountId }] : []);
             this.goToForm();
             return;
         }
@@ -476,7 +488,7 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         this.reviewChoices = { ...this.reviewChoices, [field]: source };
     }
 
-    // Chosen values go to the form; the Accounts not chosen as principal become Related Accounts.
+    // Chosen values go to the form; the Accounts of the chosen records start in the Accounts list.
     handleReviewContinue() {
         const next = { ...this.fieldValues };
         const cleared = [];
@@ -500,7 +512,15 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         });
         this.fieldValues = next;
         this.clearedFields = cleared;
-        this.relatedAccounts = [...accounts.entries()].map(([id, name]) => ({ id, name, checked: true }));
+        (this.matchResult?.candidates || [])
+            .filter((c) => c.accountId && (this.selectedContactIds.includes(c.recordId) || this.selectedLeadIds.includes(c.recordId)))
+            .forEach((c) => {
+                if (!accounts.has(c.accountId)) accounts.set(c.accountId, c.accountName);
+            });
+        this.accountList = [];
+        this.principalAccountId = undefined;
+        const master = (this.matchResult?.candidates || []).find((c) => c.recordId === this.masterId);
+        this.addAccounts([...accounts.entries()].map(([id, name]) => ({ id, name })), next.AccountId || master?.accountId);
         this.goToForm();
     }
 
@@ -538,11 +558,11 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
     }
 
     get suggestionRows() {
-        const current = this.fieldValues.AccountId;
+        const inList = new Set(this.accountList.map((acc) => acc.id));
         return (this.accountSuggestions || []).map((s) => ({
             ...s,
-            cssClass: s.accountId === current ? 'suggestion suggestion-selected' : 'suggestion',
-            badge: s.exact ? 'Exact match' : ''
+            cssClass: inList.has(s.accountId) ? 'suggestion suggestion-selected' : 'suggestion',
+            badge: inList.has(s.accountId) ? 'Added' : s.exact ? 'Exact match' : ''
         }));
     }
 
@@ -551,34 +571,119 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
     }
 
     handleSuggestionClick(event) {
+        const suggestion = this.accountSuggestions.find((s) => s.accountId === event.currentTarget.dataset.id);
+        if (suggestion) {
+            this.addAccounts([{ id: suggestion.accountId, name: suggestion.name, detail: suggestion.detail }]);
+        }
+    }
+
+    // ------------------------------------------------------------- accounts list (Contact)
+
+    // The Account Name field is managed by the Accounts section instead of the form.
+    get manageAccounts() {
+        return this.objectApiName === 'Contact' && Boolean(this.accountField);
+    }
+
+    get accountField() {
+        return (this.allFields || []).find((f) => f.apiName === 'AccountId');
+    }
+
+    get showAccountsSection() {
+        return this.manageAccounts && this.currentPage === this.accountField.pageNumber;
+    }
+
+    // Related Accounts need "Contacts to Multiple Accounts" (AccountContactRelation) in the org.
+    get supportsRelated() {
+        return this.relatedAccountsSupport?.data === true;
+    }
+
+    get accountRows() {
+        return this.accountList.map((acc) => ({
+            ...acc,
+            isPrincipal: acc.id === this.principalAccountId,
+            url: `/lightning/r/Account/${acc.id}/view`
+        }));
+    }
+
+    get principalRow() {
+        return this.accountRows.find((acc) => acc.isPrincipal);
+    }
+
+    get relatedRows() {
+        return this.accountRows.filter((acc) => !acc.isPrincipal);
+    }
+
+    get relatedCount() {
+        return this.relatedRows.length;
+    }
+
+    // Adds Accounts (names resolved on the server when missing). The first Account becomes the principal one.
+    async addAccounts(items, principalId) {
+        let fresh = items.filter((item) => item?.id && !this.accountList.some((acc) => acc.id === item.id));
+        if (!this.supportsRelated && this.principalAccountId) {
+            fresh = [];
+        }
+        const unnamed = fresh.filter((item) => !item.name || !item.detail).map((item) => item.id);
+        const described = {};
+        if (unnamed.length) {
+            try {
+                (await describeRecords({ recordIds: unnamed })).forEach((r) => {
+                    described[r.recordId] = r;
+                });
+            } catch (error) {
+                // Names are cosmetic: the Id is shown instead.
+            }
+        }
+        this.accountList = [
+            ...this.accountList,
+            ...fresh.map((item) => ({
+                id: item.id,
+                name: item.name || described[item.id]?.name || item.id,
+                detail: item.detail || described[item.id]?.detail || ''
+            }))
+        ];
+        if (principalId && this.accountList.some((acc) => acc.id === principalId)) {
+            this.principalAccountId = principalId;
+        } else if (!this.principalAccountId && this.accountList.length) {
+            this.principalAccountId = this.accountList[0].id;
+        }
+        if (!this.supportsRelated) {
+            this.accountList = this.accountList.filter((acc) => acc.id === this.principalAccountId);
+        }
+        this.syncPrincipal();
+    }
+
+    // Account Name (AccountId) always follows the principal Account of the list.
+    syncPrincipal() {
+        if (this.objectApiName !== 'Contact') return;
+        this.fieldValues = { ...this.fieldValues, AccountId: this.principalAccountId || null };
+        if (this.principalAccountId) {
+            this.clearedFields = this.clearedFields.filter((name) => name !== 'AccountId');
+        }
+    }
+
+    async handleAccountPicked(event) {
+        const id = event.detail?.recordId;
+        const picker = event.target;
+        if (!id) return;
+        await this.addAccounts([{ id }]);
+        picker.clearSelection?.();
+        this.saveError = undefined;
+    }
+
+    handlePrincipalChange(event) {
+        this.principalAccountId = event.currentTarget.dataset.id;
+        this.syncPrincipal();
+        this.saveError = undefined;
+    }
+
+    handleRemoveAccount(event) {
         const id = event.currentTarget.dataset.id;
-        const suggestion = this.accountSuggestions.find((s) => s.accountId === id);
-        const previous = this.fieldValues.AccountId;
-        if (previous && previous !== id && !this.relatedAccounts.some((a) => a.id === previous)) {
-            const known = this.relatedAccounts.find((a) => a.id === previous);
-            this.relatedAccounts = [...this.relatedAccounts, { id: previous, name: known?.name || 'Previous Account', checked: true }];
+        this.accountList = this.accountList.filter((acc) => acc.id !== id);
+        if (this.principalAccountId === id) {
+            this.principalAccountId = this.accountList[0]?.id;
         }
-        if (suggestion && !this.relatedAccounts.some((a) => a.id === id)) {
-            this.relatedAccounts = [...this.relatedAccounts, { id, name: suggestion.name, checked: false }];
-        }
-        this.fieldValues = { ...this.fieldValues, AccountId: id };
-        this.rebuildSections();
-    }
-
-    get relatedAccountRows() {
-        const principal = this.fieldValues.AccountId;
-        return this.relatedAccounts
-            .filter((a) => a.id !== principal)
-            .map((a) => ({ ...a, url: `/lightning/r/Account/${a.id}/view` }));
-    }
-
-    get hasRelatedAccounts() {
-        return this.relatedAccountsSupport?.data === true && this.relatedAccountRows.length > 0;
-    }
-
-    handleRelatedToggle(event) {
-        const id = event.target.dataset.id;
-        this.relatedAccounts = this.relatedAccounts.map((a) => (a.id === id ? { ...a, checked: event.target.checked } : a));
+        this.syncPrincipal();
     }
 
     get selectionSummary() {
@@ -594,8 +699,13 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         this.rebuildSections();
     }
 
+    // Form fields: on Contact, Account Name is edited in the Accounts section instead.
+    get formFields() {
+        return (this.allFields || []).filter((f) => !(this.manageAccounts && f.apiName === 'AccountId'));
+    }
+
     rebuildSections() {
-        this.sections = buildSections(this.allFields || [], this.currentPage, {
+        this.sections = buildSections(this.formFields, this.currentPage, {
             picklistValues: this.picklistValues,
             fieldValues: this.fieldValues,
             objectInfo: this.objectInfo
@@ -626,9 +736,17 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         );
         if (missing) {
             this.template.querySelector(`c-wizard-field-input[data-field-api="${missing.apiName}"]`)?.reportValidity();
+            this.saveError = this.missingMessage(missing);
             return false;
         }
+        this.saveError = undefined;
         return true;
+    }
+
+    missingMessage(field) {
+        return this.manageAccounts && field.apiName === 'AccountId'
+            ? 'Choose the principal Account.'
+            : `${field.displayLabel} is required.`;
     }
 
     handleNext() {
@@ -664,22 +782,141 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         this.handleSave(true);
     }
 
-    async handleSave(allowDuplicates = false) {
-        allowDuplicates = allowDuplicates === true;
+    // Last form page -> Summary: every required value is checked, then the final values are shown for validation.
+    async handleShowSummary() {
         if (!this.validateCurrentPage()) return;
+        const missing = this.allFields.find((field) => field.required && !hasValue(this.fieldValues[field.apiName]));
+        if (missing) {
+            this.currentPage = missing.pageNumber;
+            this.rebuildSections();
+            this.saveError = this.missingMessage(missing);
+            return;
+        }
+        await this.loadRecordNames();
+        this.duplicateOutcome = undefined;
+        this.saveError = undefined;
+        this.step = STEP_SUMMARY;
+    }
 
-        for (const field of this.allFields) {
-            if (field.required && !hasValue(this.fieldValues[field.apiName])) {
-                this.currentPage = field.pageNumber;
-                this.rebuildSections();
-                this.saveError = `${field.displayLabel} is required.`;
-                return;
+    handleEditFromSummary() {
+        this.step = STEP_FORM;
+        this.duplicateOutcome = undefined;
+        this.saveError = undefined;
+        this.rebuildSections();
+    }
+
+    async loadRecordNames() {
+        const known = new Set([...Object.keys(this.recordNames), ...this.accountList.map((acc) => acc.id)]);
+        const ids = this.allFields
+            .filter((f) => f.isLookup && hasValue(this.fieldValues[f.apiName]))
+            .map((f) => this.fieldValues[f.apiName])
+            .filter((id) => !known.has(id));
+        if (!ids.length) return;
+        try {
+            const names = { ...this.recordNames };
+            (await describeRecords({ recordIds: ids })).forEach((r) => {
+                names[r.recordId] = r.name;
+            });
+            this.recordNames = names;
+        } catch (error) {
+            // Names are cosmetic: the Summary falls back to the record Id.
+        }
+    }
+
+    displayValue(field, raw) {
+        if (field.isCheckbox) return raw === true ? 'Yes' : 'No';
+        if (!hasValue(raw)) return '';
+        if (field.isLookup) {
+            return this.accountList.find((acc) => acc.id === raw)?.name || this.recordNames[raw] || raw;
+        }
+        if (field.isPicklist || field.isMultiPicklist) {
+            const values = this.picklistValues?.[field.apiName]?.values || [];
+            const labelOf = (v) => values.find((item) => item.value === v)?.label || v;
+            return (Array.isArray(raw) ? raw : String(raw).split(';')).map(labelOf).join('; ');
+        }
+        if (field.inputType === 'date') {
+            const [year, month, day] = String(raw).split('-').map(Number);
+            return new Date(year, month - 1, day).toLocaleDateString();
+        }
+        return String(raw);
+    }
+
+    get summarySections() {
+        const groups = new Map();
+        this.formFields.forEach((field) => {
+            const value = this.displayValue(field, this.fieldValues[field.apiName]);
+            const key = `${field.pageNumber}-${field.sectionOrder}-${field.section}`;
+            if (!groups.has(key)) {
+                groups.set(key, { key, name: field.section, page: field.pageNumber, order: field.sectionOrder, rows: [] });
+            }
+            groups.get(key).rows.push({
+                key: field.apiName,
+                label: field.displayLabel,
+                value: value || 'No value',
+                valueClass: value ? 'summary-value' : 'summary-value summary-value-empty',
+                sortOrder: field.sortOrder,
+                columnNumber: field.columnNumber
+            });
+        });
+        return [...groups.values()]
+            .sort((x, y) => x.page - y.page || x.order - y.order || x.name.localeCompare(y.name))
+            .map((group) => ({
+                ...group,
+                rows: group.rows.sort((x, y) => x.columnNumber - y.columnNumber || x.sortOrder - y.sortOrder)
+            }));
+    }
+
+    get summaryRelated() {
+        return this.relatedRows;
+    }
+
+    get hasSummaryRelated() {
+        return this.relatedRows.length > 0;
+    }
+
+    // What the save will do besides writing the values, grouped so long selections stay readable.
+    get summaryGroups() {
+        const byId = new Map((this.matchResult?.candidates || []).map((c) => [c.recordId, c]));
+        const row = (id, type) => {
+            const c = byId.get(id) || {};
+            return {
+                id,
+                name: c.name || id,
+                email: c.email || '',
+                account: (type === 'Contact' ? c.accountName : c.company) || '',
+                url: `/lightning/r/${type}/${id}/view`
+            };
+        };
+        const groups = [];
+        if (this.isMergeMode) {
+            groups.push({ key: 'kept', title: 'Contact kept (updated)', rows: [row(this.masterId, 'Contact')] });
+            const merged = this.selectedContactIds.filter((id) => id !== this.masterId);
+            if (merged.length) {
+                groups.push({ key: 'merged', title: 'Contacts merged into it', rows: merged.map((id) => row(id, 'Contact')) });
             }
         }
+        if (this.selectedLeadIds.length) {
+            groups.push({ key: 'leads', title: 'Leads converted into it', rows: this.selectedLeadIds.map((id) => row(id, 'Lead')) });
+        }
+        return groups.map((g) => ({ ...g, count: g.rows.length }));
+    }
+
+    get hasSummaryGroups() {
+        return this.summaryGroups.length > 0;
+    }
+
+    get summaryHeadline() {
+        const leads = this.selectedLeadIds.length;
+        if (this.isMergeMode) {
+            return `1 Contact kept · ${this.selectedContactIds.length - 1} merged · ${leads} Lead(s) converted`;
+        }
+        return `New ${this.objectLabel} (${this.selectedRecordType?.label})${leads ? ` · ${leads} Lead(s) converted` : ''}`;
+    }
+
+    async handleSave(allowDuplicates = false) {
+        allowDuplicates = allowDuplicates === true;
         const fields = this.formPayload();
-        const relatedAccountIds = this.hasRelatedAccounts
-            ? this.relatedAccountRows.filter((a) => a.checked).map((a) => a.id)
-            : [];
+        const relatedAccountIds = this.manageAccounts && this.supportsRelated ? this.relatedRows.map((acc) => acc.id) : [];
 
         this.isSaving = true;
         this.saveError = undefined;
@@ -802,6 +1039,10 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         return this.ready && (this.step === STEP_FORM || (this.step === STEP_IDENTIFY && this.matchRules && !this.hasIdentifyStep));
     }
 
+    get showSummaryStep() {
+        return this.ready && this.step === STEP_SUMMARY;
+    }
+
     get showDoneStep() {
         return !this.loadError && this.step === STEP_DONE;
     }
@@ -865,7 +1106,7 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
 
     // Journey: record type (when there is a choice), identify, review (when records were chosen), form pages, complete.
     get journeySteps() {
-        const order = [STEP_RECORD_TYPE, STEP_IDENTIFY, STEP_REVIEW, STEP_FORM, STEP_DONE];
+        const order = [STEP_RECORD_TYPE, STEP_IDENTIFY, STEP_REVIEW, STEP_FORM, STEP_SUMMARY, STEP_DONE];
         const position = order.indexOf(this.step);
         const state = (stepName) => {
             const index = order.indexOf(stepName);
@@ -877,7 +1118,7 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
             steps.push({ key: 'rt', title: 'Record Type', subtitle: 'Choose the type', state: state(STEP_RECORD_TYPE) });
         }
         if (this.hasIdentifyStep) {
-            steps.push({ key: 'identify', title: 'Identify', subtitle: 'Find existing records', state: state(STEP_IDENTIFY) });
+            steps.push({ key: 'identify', title: 'Contact creation', subtitle: 'Check existing records', state: state(STEP_IDENTIFY) });
         }
         if (this.hasSelection) {
             steps.push({ key: 'review', title: 'Review values', subtitle: 'Choose what to keep', state: state(STEP_REVIEW) });
@@ -889,6 +1130,7 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
             if (this.step === STEP_FORM) pageState = page < this.currentPage ? 'complete' : page === this.currentPage ? 'active' : '';
             steps.push({ key: `page-${page}`, title: first?.section || 'Details', subtitle: `Page ${page}`, state: pageState });
         });
+        steps.push({ key: 'summary', title: 'Summary', subtitle: 'Check and save', state: state(STEP_SUMMARY) });
         steps.push({ key: 'done', title: 'Complete', subtitle: `${this.objectLabel} saved`, state: state(STEP_DONE) });
         return steps.map((item, index) => ({
             ...item,
