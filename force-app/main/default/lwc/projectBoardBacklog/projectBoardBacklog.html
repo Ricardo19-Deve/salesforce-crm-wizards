@@ -1,0 +1,216 @@
+<template>
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb">Projects / {projectName}</div>
+            <h1 class="page-title">Backlog</h1>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="search">
+            <lightning-icon icon-name="utility:search" size="x-small"></lightning-icon>
+            <input type="search" placeholder="Search backlog" value={searchTerm} oninput={handleSearch} />
+        </div>
+        <div class="avatar-group">
+            <template for:each={assignees} for:item="a">
+                <button key={a.id} class={a.cls} style={a.style} title={a.name} data-id={a.id} onclick={toggleAssignee}>
+                    {a.initials}
+                </button>
+            </template>
+        </div>
+        <button class={epicToggleClass} onclick={toggleEpics}>Epics</button>
+        <button class={onlyMineClass} onclick={toggleOnlyMine}>Only my issues</button>
+        <template lwc:if={hasFilters}>
+            <button class="btn btn-link" onclick={clearFilters}>Clear filters</button>
+        </template>
+    </div>
+
+    <div class={layoutClass}>
+        <template lwc:if={showEpics}>
+            <aside class="epics-panel">
+                <div class="epics-head">
+                    <span>Epics</span>
+                </div>
+                <template lwc:if={hasEpics}>
+                    <template for:each={epics} for:item="epic">
+                        <div key={epic.id} class={epic.itemClass} data-id={epic.id} onclick={handleEpicClick}>
+                            <div class="epic-top">
+                                <span class="epic-tag" style={epic.chipStyle}>{epic.summary}</span>
+                                <button
+                                    class="icon-btn icon-btn-sm"
+                                    title="Open epic"
+                                    data-id={epic.id}
+                                    onclick={handleEpicOpen}
+                                >
+                                    <lightning-icon icon-name="utility:new_window" size="xx-small"></lightning-icon>
+                                </button>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" style={epic.progressStyle}></div>
+                            </div>
+                            <div class="epic-meta">{epic.key} · {epic.progressText}</div>
+                        </div>
+                    </template>
+                </template>
+                <template lwc:else>
+                    <div class="epics-empty">Epics group related work. Click an epic to filter the backlog.</div>
+                </template>
+                <button class="create-inline" onclick={handleCreateEpic}>
+                    <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
+                    Create epic
+                </button>
+            </aside>
+        </template>
+
+        <div class="sections">
+            <template for:each={sections} for:item="section">
+                <div key={section.key} class={section.sectionClass}>
+                    <div class="section-header">
+                        <button
+                            class="icon-btn icon-btn-sm"
+                            data-key={section.key}
+                            onclick={toggleSection}
+                            title="Expand / collapse"
+                        >
+                            <lightning-icon icon-name={section.chevron} size="xx-small"></lightning-icon>
+                        </button>
+                        <span class="section-title">{section.title}</span>
+                        <template lwc:if={section.meta}>
+                            <span class="section-meta">{section.meta}</span>
+                        </template>
+                        <span class="section-meta">{section.countText}</span>
+                        <template lwc:if={section.isActive}>
+                            <span class="lozenge lozenge-progress">Active</span>
+                        </template>
+                        <div class="section-right">
+                            <span class="pts pts-todo" title="To Do story points">{section.todoPts}</span>
+                            <span class="pts pts-progress" title="In progress story points">{section.progressPts}</span>
+                            <span class="pts pts-done" title="Done story points">{section.donePts}</span>
+                            <template lwc:if={section.isActive}>
+                                <button class="btn btn-sm" data-id={section.sprintId} onclick={handleCompleteSprint}>
+                                    Complete sprint
+                                </button>
+                            </template>
+                            <template lwc:if={section.isPlanned}>
+                                <button
+                                    class="btn btn-sm btn-primary"
+                                    data-id={section.sprintId}
+                                    disabled={section.startDisabled}
+                                    onclick={handleStartSprint}
+                                >
+                                    Start sprint
+                                </button>
+                                <button
+                                    class="icon-btn icon-btn-sm"
+                                    title="Delete sprint"
+                                    data-id={section.sprintId}
+                                    onclick={handleDeleteSprint}
+                                >
+                                    <lightning-icon icon-name="utility:delete" size="xx-small"></lightning-icon>
+                                </button>
+                            </template>
+                            <template lwc:if={section.isBacklog}>
+                                <button class="btn btn-sm" onclick={handleCreateSprint}>Create sprint</button>
+                            </template>
+                        </div>
+                    </div>
+                    <template lwc:if={section.goal}>
+                        <div class="section-goal">{section.goal}</div>
+                    </template>
+
+                    <template lwc:if={section.expanded}>
+                        <div
+                            class={section.bodyClass}
+                            data-key={section.key}
+                            ondragover={handleDragOver}
+                            ondragleave={handleDragLeave}
+                            ondrop={handleDrop}
+                        >
+                            <template lwc:if={section.isEmpty}>
+                                <div class="section-empty">{section.emptyText}</div>
+                            </template>
+                            <template for:each={section.rows} for:item="row">
+                                <div
+                                    key={row.id}
+                                    class={row.rowClass}
+                                    data-id={row.id}
+                                    draggable="true"
+                                    ondragstart={handleDragStart}
+                                    ondragend={handleDragEnd}
+                                    onclick={handleRowClick}
+                                >
+                                    <span class={row.typeClass} title={row.type}>
+                                        <lightning-icon
+                                            icon-name={row.typeIcon}
+                                            size="xx-small"
+                                            variant="inverse"
+                                        ></lightning-icon>
+                                    </span>
+                                    <span class={row.keyClass}>{row.key}</span>
+                                    <span class="row-summary">{row.summary}</span>
+                                    <div class="row-right">
+                                        <template lwc:if={row.epicId}>
+                                            <span class="epic-tag" style={row.epicStyle}>{row.epicName}</span>
+                                        </template>
+                                        <span class={row.statusClass}>{row.status}</span>
+                                        <span class="row-points">
+                                            <template lwc:if={row.hasPoints}
+                                                ><span class="points">{row.points}</span></template
+                                            >
+                                        </span>
+                                        <span class={row.prioClass} title={row.priority}>{row.prioGlyph}</span>
+                                        <template lwc:if={row.assigneeId}>
+                                            <span
+                                                class="avatar avatar-sm"
+                                                style={row.assigneeStyle}
+                                                title={row.assigneeName}
+                                                >{row.assigneeInitials}</span
+                                            >
+                                        </template>
+                                        <template lwc:else>
+                                            <span class="avatar avatar-sm avatar-empty" title="Unassigned">
+                                                <lightning-icon
+                                                    icon-name="utility:user"
+                                                    size="xx-small"
+                                                ></lightning-icon>
+                                            </span>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                            <div class={section.endClass}></div>
+                        </div>
+
+                        <template lwc:if={section.quickOpen}>
+                            <div class="quick-create">
+                                <select class="quick-type" onchange={handleQuickType}>
+                                    <template for:each={typeOptions} for:item="opt">
+                                        <option key={opt.value} value={opt.value} selected={opt.selected}>
+                                            {opt.label}
+                                        </option>
+                                    </template>
+                                </select>
+                                <input
+                                    class="quick-input"
+                                    type="text"
+                                    maxlength="255"
+                                    placeholder="What needs to be done?"
+                                    oninput={handleQuickInput}
+                                    onkeydown={handleQuickKey}
+                                />
+                                <button class="btn btn-sm btn-primary" onclick={submitQuickCreate}>Create</button>
+                                <button class="btn btn-sm btn-subtle" onclick={cancelQuickCreate}>Cancel</button>
+                            </div>
+                        </template>
+                        <template lwc:else>
+                            <button class="create-inline" data-key={section.key} onclick={openQuickCreate}>
+                                <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
+                                Create issue
+                            </button>
+                        </template>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </div>
+</template>

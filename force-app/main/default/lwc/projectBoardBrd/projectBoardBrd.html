@@ -1,0 +1,334 @@
+<template>
+    <template lwc:if={loading}>
+        <div class="doc-empty">Loading BRD…</div>
+    </template>
+
+    <template lwc:elseif={hasBrd}>
+        <!-- ---------------------------------------------------------- Header -->
+        <div class="doc-card doc-header">
+            <div class="doc-header-top">
+                <div>
+                    <div class="doc-eyebrow">Business Requirements Document &amp; Solution Design</div>
+                    <input
+                        class="title-input"
+                        type="text"
+                        maxlength="80"
+                        data-field="Name"
+                        value={brd.Name}
+                        onblur={handleBrdField}
+                        aria-label="Document name"
+                    />
+                </div>
+                <div class="doc-actions">
+                    <template lwc:if={saving}><span class="saving">Saving…</span></template>
+                    <a class="btn btn-sm" href={pdfUrl} target="_blank" rel="noopener">
+                        <lightning-icon icon-name="doctype:pdf" size="x-small"></lightning-icon>
+                        PDF
+                    </a>
+                    <a class="btn btn-sm" href={wordUrl} target="_blank" rel="noopener">
+                        <lightning-icon icon-name="doctype:word" size="x-small"></lightning-icon>
+                        Word
+                    </a>
+                    <button class="icon-btn" title="Delete BRD" onclick={handleDeleteBrd}>
+                        <lightning-icon icon-name="utility:delete" size="x-small"></lightning-icon>
+                    </button>
+                </div>
+            </div>
+            <div class="grid-4">
+                <div>
+                    <label class="field-label">PBI ID</label>
+                    <input
+                        class="field-input"
+                        type="text"
+                        maxlength="50"
+                        data-field="PBI_ID__c"
+                        value={brd.PBI_ID__c}
+                        placeholder="PBI-0000"
+                        onblur={handleBrdField}
+                    />
+                </div>
+                <div>
+                    <label class="field-label">Business area</label>
+                    <input
+                        class="field-input"
+                        type="text"
+                        maxlength="120"
+                        data-field="Business_Area__c"
+                        value={brd.Business_Area__c}
+                        onblur={handleBrdField}
+                    />
+                </div>
+                <div>
+                    <label class="field-label">Version</label>
+                    <input
+                        class="field-input"
+                        type="text"
+                        maxlength="10"
+                        data-field="Version__c"
+                        value={brd.Version__c}
+                        onblur={handleBrdField}
+                    />
+                </div>
+                <div>
+                    <label class="field-label">Status</label>
+                    <select class={statusClass} data-field="Status__c" onchange={handleBrdField}>
+                        <template for:each={statusOptions} for:item="o">
+                            <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
+                        </template>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="doc-section-title">Section One (BRD)</div>
+
+        <!-- ---------------------------------------------------------- 1 -->
+        <div class="doc-card">
+            <h3 class="doc-h"><span class="num">1</span> Business Change Initiator and Impacted Users</h3>
+            <div class="grid-3">
+                <div>
+                    <label class="field-label">Business Analyst</label>
+                    <input
+                        class="field-input"
+                        type="text"
+                        maxlength="120"
+                        data-field="Business_Analyst__c"
+                        value={brd.Business_Analyst__c}
+                        onblur={handleBrdField}
+                    />
+                </div>
+                <div>
+                    <label class="field-label">Business Requestor</label>
+                    <input
+                        class="field-input"
+                        type="text"
+                        maxlength="120"
+                        data-field="Business_Requestor__c"
+                        value={brd.Business_Requestor__c}
+                        onblur={handleBrdField}
+                    />
+                </div>
+                <div>
+                    <label class="field-label">Impacted Users</label>
+                    <input
+                        class="field-input"
+                        type="text"
+                        maxlength="255"
+                        data-field="Impacted_Users__c"
+                        value={brd.Impacted_Users__c}
+                        onblur={handleBrdField}
+                    />
+                </div>
+            </div>
+        </div>
+
+        <!-- ---------------------------------------------------------- 2 -->
+        <div class="doc-card">
+            <h3 class="doc-h"><span class="num">2</span> Known Systems Impacted</h3>
+            <input
+                class="field-input"
+                type="text"
+                maxlength="255"
+                data-field="Systems_Impacted__c"
+                value={brd.Systems_Impacted__c}
+                placeholder="Comma separated, e.g. Salesforce.com, SAP"
+                onblur={handleBrdField}
+            />
+            <div class="chips">
+                <template for:each={systemChips} for:item="chip">
+                    <span key={chip} class="chip">{chip}</span>
+                </template>
+            </div>
+        </div>
+
+        <!-- ---------------------------------------------------------- 3 -->
+        <div class="doc-card">
+            <div class="doc-h-row">
+                <h3 class="doc-h"><span class="num">3</span> Business Requirements</h3>
+                <button class="btn btn-sm" onclick={handleAddRequirement}>
+                    <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
+                    Add requirement
+                </button>
+            </div>
+            <p class="hint">One bullet per line. Acceptance criteria are used to generate test cases automatically.</p>
+            <template for:each={requirements} for:item="r">
+                <div key={r.Id} class="req">
+                    <div class="req-head">
+                        <span class="req-num">{r.Name}</span>
+                        <button
+                            class="icon-btn icon-btn-sm"
+                            title="Delete requirement"
+                            data-id={r.Id}
+                            onclick={handleDeleteRequirement}
+                        >
+                            <lightning-icon icon-name="utility:close" size="xx-small"></lightning-icon>
+                        </button>
+                    </div>
+                    <div class="grid-2">
+                        <div>
+                            <label class="field-label">Requirement</label>
+                            <textarea
+                                class="field-textarea"
+                                data-id={r.Id}
+                                data-field="Requirement__c"
+                                data-text={r.Requirement__c}
+                                onblur={handleRequirementField}
+                            ></textarea>
+                        </div>
+                        <div>
+                            <label class="field-label">Acceptance Criteria</label>
+                            <textarea
+                                class="field-textarea"
+                                data-id={r.Id}
+                                data-field="Acceptance_Criteria__c"
+                                data-text={r.Acceptance_Criteria__c}
+                                onblur={handleRequirementField}
+                            ></textarea>
+                        </div>
+                        <div>
+                            <label class="field-label">System(s) Impacted</label>
+                            <input
+                                class="field-input"
+                                type="text"
+                                maxlength="255"
+                                data-id={r.Id}
+                                data-field="Systems_Impacted__c"
+                                value={r.Systems_Impacted__c}
+                                onblur={handleRequirementField}
+                            />
+                        </div>
+                        <div>
+                            <label class="field-label">Additional Information</label>
+                            <input
+                                class="field-input"
+                                type="text"
+                                data-id={r.Id}
+                                data-field="Additional_Info__c"
+                                value={r.Additional_Info__c}
+                                onblur={handleRequirementField}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- ---------------------------------------------------------- 4 -->
+        <div class="doc-card">
+            <h3 class="doc-h"><span class="num">4</span> Sign-Off</h3>
+            <p class="hint">
+                Requirements and scope will be locked upon approval. Business approvals are recorded below.
+            </p>
+            <div class="signoff">
+                <template for:each={signOffRows} for:item="s">
+                    <div key={s.key} class="signoff-row">
+                        <span class="signoff-role">{s.label}</span>
+                        <input
+                            class="field-input"
+                            type="text"
+                            maxlength="120"
+                            placeholder="Printed name"
+                            data-field={s.nameField}
+                            value={s.name}
+                            onblur={handleBrdField}
+                        />
+                        <input
+                            class="field-input"
+                            type="date"
+                            data-field={s.dateField}
+                            value={s.date}
+                            onchange={handleBrdField}
+                        />
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div class="doc-section-title">Section Two (Solution Design)</div>
+
+        <!-- ---------------------------------------------------------- 5 -->
+        <div class="doc-card">
+            <h3 class="doc-h"><span class="num">5</span> Solution</h3>
+            <template for:each={requirements} for:item="r">
+                <div key={r.Id} class="req">
+                    <div class="req-head"><span class="req-num">{r.Name}</span></div>
+                    <div class="grid-solution">
+                        <div>
+                            <label class="field-label">Solution</label>
+                            <textarea
+                                class="field-textarea"
+                                data-id={r.Id}
+                                data-field="Solution__c"
+                                data-text={r.Solution__c}
+                                placeholder="e.g. Update flow Automatic Case Reopening…"
+                                onblur={handleRequirementField}
+                            ></textarea>
+                        </div>
+                        <div>
+                            <label class="field-label">System(s) Impacted</label>
+                            <input
+                                class="field-input"
+                                type="text"
+                                maxlength="255"
+                                data-id={r.Id}
+                                data-field="Solution_Systems__c"
+                                value={r.Solution_Systems__c}
+                                onblur={handleRequirementField}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <div class="signoff">
+                <template for:each={solutionSignOffRows} for:item="s">
+                    <div key={s.key} class="signoff-row">
+                        <span class="signoff-role">{s.label}</span>
+                        <input
+                            class="field-input"
+                            type="text"
+                            maxlength="120"
+                            placeholder="Printed name"
+                            data-field={s.nameField}
+                            value={s.name}
+                            onblur={handleBrdField}
+                        />
+                        <input
+                            class="field-input"
+                            type="date"
+                            data-field={s.dateField}
+                            value={s.date}
+                            onchange={handleBrdField}
+                        />
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div class="doc-card">
+            <c-project-board-attachments
+                record-id={brd.Id}
+                heading="Solution screenshots — included in the PDF"
+                hint="Drop Flow / configuration screenshots here"
+                accept=".png,.jpg,.jpeg,.gif"
+            ></c-project-board-attachments>
+        </div>
+    </template>
+
+    <template lwc:else>
+        <div class="doc-card doc-start">
+            <span class="doc-orb">
+                <lightning-icon
+                    icon-name="utility:richtextbulletedlist"
+                    size="small"
+                    variant="inverse"
+                ></lightning-icon>
+            </span>
+            <h3>No BRD for this issue yet</h3>
+            <p>
+                Create the Business Requirements Document &amp; Solution Design from the Contoso template. It is
+                pre-filled with the issue key and description, and exports to PDF and Word.
+            </p>
+            <button class="btn btn-primary" disabled={saving} onclick={handleCreate}>Create BRD from template</button>
+        </div>
+    </template>
+</template>

@@ -1,0 +1,230 @@
+<template>
+    <!-- ---------------------------------------------------------- Summary -->
+    <div class="ts-header">
+        <div class="ts-stats">
+            <div class="stat-num">{summary.total}<span>test cases</span></div>
+            <div class="stat-num pass">{summary.pass}<span>pass</span></div>
+            <div class="stat-num fail">{summary.fail}<span>fail</span></div>
+            <div class="stat-num blocked">{summary.blocked}<span>blocked</span></div>
+            <div class="stat-num notrun">{summary.notRun}<span>not run</span></div>
+        </div>
+        <div class="ts-actions">
+            <template lwc:if={hasRequirements}>
+                <button
+                    class="btn btn-sm"
+                    disabled={busy}
+                    onclick={handleGenerate}
+                    title="Create one test case per BRD acceptance criterion"
+                >
+                    <lightning-icon icon-name="utility:magicwand" size="xx-small"></lightning-icon>
+                    Generate from BRD
+                </button>
+            </template>
+            <button class="btn btn-sm btn-primary" disabled={busy} onclick={handleAdd}>
+                <lightning-icon icon-name="utility:add" size="xx-small" variant="inverse"></lightning-icon>
+                Test case
+            </button>
+            <a class="btn btn-sm" href={pdfUrl} target="_blank" rel="noopener">
+                <lightning-icon icon-name="doctype:pdf" size="x-small"></lightning-icon>
+                PDF
+            </a>
+            <a class="btn btn-sm" href={wordUrl} target="_blank" rel="noopener">
+                <lightning-icon icon-name="doctype:word" size="x-small"></lightning-icon>
+                Word
+            </a>
+        </div>
+    </div>
+    <div class="ts-bar">
+        <span class="bar-pass" style={summary.passStyle}></span>
+        <span class="bar-fail" style={summary.failStyle}></span>
+        <span class="bar-blocked" style={summary.blockedStyle}></span>
+    </div>
+
+    <template lwc:if={loading}>
+        <div class="ts-empty">Loading test scripts…</div>
+    </template>
+    <template lwc:elseif={hasTests}>
+        <template for:each={rows} for:item="tc">
+            <div key={tc.Id} class={tc.cardClass}>
+                <!-- Collapsed header -->
+                <div class="tc-head" data-id={tc.Id} onclick={toggle}>
+                    <lightning-icon icon-name={tc.chevron} size="xx-small"></lightning-icon>
+                    <span class="tc-id">{tc.Name}</span>
+                    <span class="tc-title">{tc.Title__c}</span>
+                    <template lwc:if={tc.reqLabel}><span class="tc-req">{tc.reqLabel}</span></template>
+                    <div class="segmented" onclick={stop}>
+                        <template for:each={tc.results} for:item="r">
+                            <button
+                                key={r.value}
+                                class={r.cls}
+                                data-id={tc.Id}
+                                data-value={r.value}
+                                onclick={handleResult}
+                            >
+                                {r.value}
+                            </button>
+                        </template>
+                    </div>
+                </div>
+                <template lwc:if={tc.testedBy}>
+                    <div class="tc-tested">
+                        Tested by {tc.testedBy} ·
+                        <lightning-formatted-date-time
+                            value={tc.Tested_Date__c}
+                            time-zone="UTC"
+                        ></lightning-formatted-date-time>
+                    </div>
+                </template>
+
+                <!-- Expanded body -->
+                <template lwc:if={tc.open}>
+                    <div class="tc-body">
+                        <div class="tc-grid">
+                            <div class="span-2">
+                                <label class="field-label">Title</label>
+                                <input
+                                    class="field-input"
+                                    type="text"
+                                    maxlength="255"
+                                    data-id={tc.Id}
+                                    data-field="Title__c"
+                                    value={tc.Title__c}
+                                    onblur={handleField}
+                                />
+                            </div>
+                            <div>
+                                <label class="field-label">Business Req #</label>
+                                <select
+                                    class="field-select"
+                                    data-id={tc.Id}
+                                    data-field="Requirement__c"
+                                    onchange={handleField}
+                                >
+                                    <template for:each={tc.reqOptions} for:item="o">
+                                        <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div class="span-3 two-col">
+                                <div>
+                                    <label class="field-label">Preconditions</label>
+                                    <textarea
+                                        class="field-textarea"
+                                        data-id={tc.Id}
+                                        data-field="Preconditions__c"
+                                        data-text={tc.Preconditions__c}
+                                        placeholder="e.g. User with the Sales profile, Account in Portugal"
+                                        onblur={handleField}
+                                    ></textarea>
+                                </div>
+                                <div>
+                                    <label class="field-label">Test data</label>
+                                    <textarea
+                                        class="field-textarea"
+                                        data-id={tc.Id}
+                                        data-field="Test_Data__c"
+                                        data-text={tc.Test_Data__c}
+                                        placeholder="Records, values, files used"
+                                        onblur={handleField}
+                                    ></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="steps">
+                            <div class="steps-head">
+                                <span>#</span><span>Action</span><span>Expected result</span><span>Actual result</span
+                                ><span></span>
+                            </div>
+                            <template for:each={tc.stepRows} for:item="s">
+                                <div key={s.key} class="step">
+                                    <span class="step-num">{s.num}</span>
+                                    <textarea
+                                        class="step-input"
+                                        data-id={tc.Id}
+                                        data-index={s.index}
+                                        data-field="action"
+                                        data-text={s.action}
+                                        placeholder="What the tester does"
+                                        oninput={handleStepInput}
+                                        onblur={handleStepBlur}
+                                    ></textarea>
+                                    <textarea
+                                        class="step-input"
+                                        data-id={tc.Id}
+                                        data-index={s.index}
+                                        data-field="expected"
+                                        data-text={s.expected}
+                                        placeholder="What should happen"
+                                        oninput={handleStepInput}
+                                        onblur={handleStepBlur}
+                                    ></textarea>
+                                    <textarea
+                                        class="step-input"
+                                        data-id={tc.Id}
+                                        data-index={s.index}
+                                        data-field="actual"
+                                        data-text={s.actual}
+                                        placeholder="What happened"
+                                        oninput={handleStepInput}
+                                        onblur={handleStepBlur}
+                                    ></textarea>
+                                    <button
+                                        class="icon-btn icon-btn-sm"
+                                        title="Remove step"
+                                        data-id={tc.Id}
+                                        data-index={s.index}
+                                        onclick={handleRemoveStep}
+                                    >
+                                        <lightning-icon icon-name="utility:close" size="xx-small"></lightning-icon>
+                                    </button>
+                                </div>
+                            </template>
+                            <button class="add-step" data-id={tc.Id} onclick={handleAddStep}>
+                                <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
+                                Add step
+                            </button>
+                        </div>
+
+                        <label class="field-label">Comments</label>
+                        <textarea
+                            class="field-textarea"
+                            data-id={tc.Id}
+                            data-field="Comments__c"
+                            data-text={tc.Comments__c}
+                            onblur={handleField}
+                        ></textarea>
+
+                        <div class="evidence">
+                            <c-project-board-attachments
+                                record-id={tc.Id}
+                                heading="Evidence"
+                                hint="Drop screenshots / files as test evidence"
+                            ></c-project-board-attachments>
+                        </div>
+
+                        <div class="tc-foot">
+                            <button class="btn btn-sm btn-subtle danger" data-id={tc.Id} onclick={handleDelete}>
+                                <lightning-icon icon-name="utility:delete" size="xx-small"></lightning-icon>
+                                Delete test case
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </template>
+    <template lwc:else>
+        <div class="ts-empty">
+            <p>No test cases yet.</p>
+            <template lwc:if={hasRequirements}>
+                <p class="muted">
+                    Tip: <strong>Generate from BRD</strong> creates one test case per acceptance criterion.
+                </p>
+            </template>
+            <template lwc:else>
+                <p class="muted">Tip: create the BRD first, then generate test cases from its acceptance criteria.</p>
+            </template>
+        </div>
+    </template>
+</template>

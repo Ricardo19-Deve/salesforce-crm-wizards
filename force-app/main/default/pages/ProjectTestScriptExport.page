@@ -1,0 +1,128 @@
+<apex:page controller="ProjectExportController" action="{!initTestScripts}" renderAs="{!renderAs}" contentType="{!contentType}"
+    showHeader="false" sidebar="false" standardStylesheets="false" applyHtmlTag="false" applyBodyTag="false" cache="false">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>{!fileName}</title>
+    <style type="text/css">
+        @page {
+            size: A4;
+            margin: 18mm 14mm 20mm 14mm;
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 8pt;
+            }
+        }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #1a1a1a; }
+        p { margin: 0 0 6pt 0; }
+        ul { margin: 2pt 0 4pt 0; padding-left: 16pt; }
+        li { margin-bottom: 2pt; }
+        .page-break { page-break-before: always; }
+        .wordmark { color: #1e9bd7; font-weight: bold; font-size: 11pt; letter-spacing: 1pt; }
+        .wordmark-big { color: #4d4d4d; font-size: 20pt; letter-spacing: 1pt; }
+        .logo { height: 30pt; }
+        .logo-big { height: 46pt; }
+        .cover { text-align: center; padding-top: 150pt; }
+        .doc-title { font-size: 20pt; font-weight: bold; margin: 40pt 0 8pt 0; text-align: center; }
+        .doc-sub { font-size: 14pt; font-weight: bold; margin: 26pt 0 50pt 0; text-align: center; }
+        .muted { color: #6b6b6b; font-size: 8.5pt; }
+        h1.title { font-size: 18pt; margin: 6pt 0 2pt 0; }
+        h2.section { color: #1e9bd7; font-size: 14pt; text-decoration: underline; margin: 18pt 0 10pt 0; }
+        h3 { font-size: 12pt; margin: 14pt 0 6pt 0; }
+        table.grid { width: 100%; border-collapse: collapse; margin: 4pt 0 12pt 0; }
+        table.grid th { background: #d9d9d9; border: 1px solid #000000; padding: 4pt 6pt; font-size: 9pt; text-align: left; }
+        table.grid td { border: 1px solid #000000; padding: 4pt 6pt; font-size: 9pt; vertical-align: top; }
+        table.grid.center th, table.grid.center td { text-align: center; }
+        table.narrow { width: 60%; margin-left: 20%; }
+        .label-u { text-decoration: underline; }
+        .italic { font-style: italic; }
+        .toc td { padding: 3pt 0; font-size: 10pt; }
+        .toc .toc-section { color: #1e9bd7; font-weight: bold; padding-top: 6pt; }
+        .goal { border-left: 3pt solid #1e9bd7; background: #f2f8fc; padding: 6pt 10pt; margin: 8pt 0 12pt 0; }
+        table.kpi { width: 100%; border-collapse: separate; border-spacing: 6pt; margin: 6pt 0 10pt 0; }
+        table.kpi td { width: 16%; border: 1px solid #c9d6e3; background: #f4f8fc; padding: 8pt; text-align: center; vertical-align: top; }
+        .kpi-value { font-size: 18pt; font-weight: bold; color: #0b3d7a; }
+        .kpi-label { font-size: 7.5pt; color: #4d5b6b; text-transform: uppercase; }
+        .status { font-weight: bold; padding: 1pt 4pt; white-space: nowrap; }
+        .tc-block { page-break-inside: avoid; margin-top: 14pt; padding-top: 6pt; border-top: 1px solid #c9d6e3; }
+        .status-pass { color: #006644; background: #e3fcef; }
+        .status-fail { color: #bf2600; background: #ffebe6; }
+        .status-blocked { color: #974f0c; background: #fff4e5; }
+        .status-not-run { color: #42526e; background: #ebecf0; }
+        .screenshot { max-width: 100%; margin: 6pt 0 2pt 0; border: 1px solid #cccccc; }
+        .footer-note { margin-top: 16pt; color: #6b6b6b; font-size: 8pt; }
+    </style>
+</head>
+<body>
+    <c:ProjectExportLogo logoUrl="{!logoUrl}" isWord="{!isWord}" />
+    <h1 class="title">Test Scripts (UAT)</h1>
+    <p class="muted">Commercial Applications · Generated {!generatedOn} by {!generatedBy}</p>
+
+    <table class="grid">
+        <tr><th style="width:18%">PBI ID</th><th>Name</th><th style="width:22%">Project</th></tr>
+        <tr><td>{!pbiId}</td><td>{!issue.Name} · {!issue.Summary__c}</td><td>{!issue.Project__r.Name}</td></tr>
+    </table>
+
+    <table class="kpi">
+        <tr>
+            <td><div class="kpi-value">{!testCounts['Total']}</div><div class="kpi-label">Test cases</div></td>
+            <td><div class="kpi-value" style="color:#006644">{!testCounts['Pass']}</div><div class="kpi-label">Pass</div></td>
+            <td><div class="kpi-value" style="color:#bf2600">{!testCounts['Fail']}</div><div class="kpi-label">Fail</div></td>
+            <td><div class="kpi-value" style="color:#974f0c">{!testCounts['Blocked']}</div><div class="kpi-label">Blocked</div></td>
+            <td><div class="kpi-value" style="color:#42526e">{!testCounts['Not Run']}</div><div class="kpi-label">Not run</div></td>
+        </tr>
+    </table>
+
+    <h2 class="section">Summary</h2>
+    <table class="grid">
+        <tr><th style="width:10%">ID</th><th>Test case</th><th style="width:12%">Req #</th><th style="width:11%">Result</th><th style="width:18%">Tested by</th><th style="width:11%">Date</th></tr>
+        <apex:repeat value="{!tests}" var="t">
+            <tr>
+                <td>{!t.record.Name}</td>
+                <td>{!t.record.Title__c}</td>
+                <td>{!t.record.Requirement__r.Name}</td>
+                <td><span class="{!t.statusClass}">{!t.record.Status__c}</span></td>
+                <td>{!t.record.Tested_By__r.Name}</td>
+                <td>{!t.testedOn}</td>
+            </tr>
+        </apex:repeat>
+    </table>
+
+    <h2 class="section">Test cases</h2>
+    <apex:repeat value="{!tests}" var="t">
+        <div class="tc-block">
+        <h3>{!t.record.Name} — {!t.record.Title__c}</h3>
+        <table class="grid">
+            <tr><th style="width:22%">Business Req #</th><td>{!t.record.Requirement__r.Name}</td>
+                <th style="width:14%">Result</th><td style="width:16%"><span class="{!t.statusClass}">{!t.record.Status__c}</span></td></tr>
+            <tr><th>Tested by</th><td>{!t.record.Tested_By__r.Name}</td><th>Date</th><td>{!t.testedOn}</td></tr>
+            <tr><th>Preconditions</th><td colspan="3"><ul><apex:repeat value="{!t.preconditionLines}" var="l"><li>{!l}</li></apex:repeat></ul></td></tr>
+            <tr><th>Test data</th><td colspan="3"><ul><apex:repeat value="{!t.testDataLines}" var="l"><li>{!l}</li></apex:repeat></ul></td></tr>
+        </table>
+        <h3>Steps</h3>
+        <table class="grid">
+            <tr><th style="width:6%">#</th><th>Action</th><th>Expected result</th><th>Actual result</th></tr>
+            <apex:repeat value="{!t.steps}" var="s">
+                <tr><td>{!s.num}</td><td>{!s.action}</td><td>{!s.expected}</td><td>{!s.actual}</td></tr>
+            </apex:repeat>
+        </table>
+        <apex:outputPanel layout="none" rendered="{!NOT(ISBLANK(t.record.Comments__c))}">
+            <h3>Comments</h3>
+            <p>{!t.record.Comments__c}</p>
+        </apex:outputPanel>
+        </div>
+    </apex:repeat>
+
+    <div class="page-break"></div>
+    <c:ProjectExportLogo logoUrl="{!logoUrl}" isWord="{!isWord}" />
+    <h2 class="section">UAT Sign-Off</h2>
+    <table class="grid narrow">
+        <tr><th></th><th>Printed Name</th><th style="width:22%">Date</th><th style="width:22%">Signature</th></tr>
+        <tr><td>Tester</td><td></td><td></td><td></td></tr>
+        <tr><td>Business Approver</td><td></td><td></td><td></td></tr>
+        <tr><td>IT Delivery</td><td></td><td></td><td></td></tr>
+    </table>
+</body>
+</html>
+</apex:page>

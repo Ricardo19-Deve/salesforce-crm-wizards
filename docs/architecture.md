@@ -1,5 +1,7 @@
 # Architecture
 
+> This page covers the wizards. The Project Board module is documented in [project-board.md](project-board.md).
+
 ## Design goals
 
 1. **Admins configure, developers don't redeploy.** Fields, labels, pages, record types, match rules and price-book rules live in Custom Metadata. Custom Metadata deploys with the code and can be changed in Setup.

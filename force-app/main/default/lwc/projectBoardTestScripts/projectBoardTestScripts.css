@@ -1,0 +1,307 @@
+@import 'c/projectBoardStyles';
+
+:host {
+    display: block;
+    animation: jx-rise 0.35s var(--jx-spring);
+    --ts-pass: #22c55e;
+    --ts-fail: #ff4d6d;
+    --ts-blocked: #f59e0b;
+    --ts-notrun: #94a3b8;
+}
+.ts-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.ts-stats {
+    display: flex;
+    gap: 18px;
+}
+.stat-num {
+    display: flex;
+    flex-direction: column;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 26px;
+}
+.stat-num span {
+    color: var(--jx-text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 14px;
+    text-transform: uppercase;
+}
+.stat-num.pass {
+    color: var(--ts-pass);
+}
+.stat-num.fail {
+    color: var(--ts-fail);
+}
+.stat-num.blocked {
+    color: var(--ts-blocked);
+}
+.stat-num.notrun {
+    color: var(--ts-notrun);
+}
+.ts-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.ts-actions a.btn {
+    text-decoration: none;
+}
+.ts-bar {
+    display: flex;
+    height: 6px;
+    margin: 14px 0 16px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--jx-glass-soft);
+}
+.ts-bar span {
+    height: 100%;
+    transition: width 0.6s var(--jx-spring);
+}
+.bar-pass {
+    background: var(--ts-pass);
+}
+.bar-fail {
+    background: var(--ts-fail);
+}
+.bar-blocked {
+    background: var(--ts-blocked);
+}
+
+/* ---------- Test case cards */
+.tc {
+    position: relative;
+    margin-bottom: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--jx-glass-border);
+    border-radius: 18px;
+    background: var(--jx-glass-strong);
+    animation: jx-rise 0.3s var(--jx-spring) both;
+}
+.tc::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 14px;
+    bottom: 14px;
+    width: 4px;
+    border-radius: 4px;
+    background: var(--tc-color, var(--ts-notrun));
+}
+.tc-pass {
+    --tc-color: var(--ts-pass);
+}
+.tc-fail {
+    --tc-color: var(--ts-fail);
+}
+.tc-blocked {
+    --tc-color: var(--ts-blocked);
+}
+.tc-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+.tc-id {
+    color: var(--jx-text-subtle);
+    font-size: 12px;
+    font-weight: 800;
+}
+.tc-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.tc-req {
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--jx-accent-soft);
+    color: var(--jx-accent-text);
+    font-size: 11px;
+    font-weight: 700;
+}
+.tc-tested {
+    margin: 4px 0 0 34px;
+    color: var(--jx-text-muted);
+    font-size: 11px;
+}
+.segmented {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--jx-glass-border);
+    border-radius: 999px;
+    background: var(--jx-glass-soft);
+}
+.seg {
+    height: 26px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--jx-text-subtle);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background 0.2s,
+        color 0.2s,
+        transform 0.25s var(--jx-spring);
+}
+.seg:hover {
+    background: var(--jx-hover);
+}
+.seg.active {
+    color: #fff;
+    transform: scale(1.04);
+}
+.seg-notrun.active {
+    background: var(--ts-notrun);
+}
+.seg-pass.active {
+    background: var(--ts-pass);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+.seg-fail.active {
+    background: var(--ts-fail);
+    box-shadow: 0 4px 12px rgba(255, 77, 109, 0.4);
+}
+.seg-blocked.active {
+    background: var(--ts-blocked);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+.tc-body {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--jx-divider);
+    animation: jx-rise 0.3s var(--jx-spring);
+}
+.tc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 200px;
+    gap: 12px 14px;
+    margin-bottom: 14px;
+}
+.span-2 {
+    grid-column: span 2;
+}
+.span-3 {
+    grid-column: 1 / -1;
+}
+.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+.steps {
+    margin-bottom: 14px;
+    padding: 10px;
+    border: 1px solid var(--jx-glass-border);
+    border-radius: 16px;
+    background: var(--jx-glass-soft);
+}
+.steps-head,
+.step {
+    display: grid;
+    grid-template-columns: 28px 1fr 1fr 1fr 28px;
+    gap: 8px;
+    align-items: start;
+}
+.steps-head {
+    padding: 0 0 6px;
+    color: var(--jx-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.step {
+    margin-bottom: 6px;
+}
+.step-num {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    margin-top: 6px;
+    border-radius: 8px;
+    background: var(--jx-accent-soft);
+    color: var(--jx-accent-text);
+    font-size: 11px;
+    font-weight: 800;
+}
+.step-input {
+    width: 100%;
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 1px solid var(--jx-glass-border);
+    border-radius: 10px;
+    background: var(--jx-field);
+    color: var(--jx-text);
+    outline: none;
+    resize: vertical;
+}
+.step-input:focus {
+    border-color: var(--jx-accent);
+    box-shadow: 0 0 0 3px var(--jx-accent-ring);
+}
+.step-input::placeholder {
+    color: var(--jx-text-muted);
+}
+.icon-btn-sm {
+    width: 26px;
+    height: 26px;
+    margin-top: 6px;
+}
+.add-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    padding: 6px 10px;
+    border: 1px dashed var(--jx-glass-border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--jx-text-subtle);
+    font-weight: 600;
+    cursor: pointer;
+}
+.add-step:hover {
+    background: var(--jx-hover);
+}
+.evidence {
+    margin-top: 14px;
+}
+.tc-foot {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+.danger {
+    color: var(--jx-danger-text);
+    --slds-c-icon-color-foreground-default: var(--jx-danger-text);
+}
+.ts-empty {
+    padding: 28px;
+    border: 1px dashed var(--jx-glass-border);
+    border-radius: 18px;
+    text-align: center;
+}
+.muted {
+    margin-top: 6px;
+    color: var(--jx-text-muted);
+    font-size: 13px;
+}

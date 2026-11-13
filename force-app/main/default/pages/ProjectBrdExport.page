@@ -1,0 +1,189 @@
+<apex:page controller="ProjectExportController" action="{!initBrd}" renderAs="{!renderAs}" contentType="{!contentType}"
+    showHeader="false" sidebar="false" standardStylesheets="false" applyHtmlTag="false" applyBodyTag="false" cache="false">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>{!fileName}</title>
+    <style type="text/css">
+        @page {
+            size: A4;
+            margin: 18mm 14mm 20mm 14mm;
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 8pt;
+            }
+        }
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #1a1a1a; }
+        p { margin: 0 0 6pt 0; }
+        ul { margin: 2pt 0 4pt 0; padding-left: 16pt; }
+        li { margin-bottom: 2pt; }
+        .page-break { page-break-before: always; }
+        .wordmark { color: #1e9bd7; font-weight: bold; font-size: 11pt; letter-spacing: 1pt; }
+        .wordmark-big { color: #4d4d4d; font-size: 20pt; letter-spacing: 1pt; }
+        .logo { height: 30pt; }
+        .logo-big { height: 46pt; }
+        .cover { text-align: center; padding-top: 150pt; }
+        .doc-title { font-size: 20pt; font-weight: bold; margin: 40pt 0 8pt 0; text-align: center; }
+        .doc-sub { font-size: 14pt; font-weight: bold; margin: 26pt 0 50pt 0; text-align: center; }
+        .muted { color: #6b6b6b; font-size: 8.5pt; }
+        h1.title { font-size: 18pt; margin: 6pt 0 2pt 0; }
+        h2.section { color: #1e9bd7; font-size: 14pt; text-decoration: underline; margin: 18pt 0 10pt 0; }
+        h3 { font-size: 12pt; margin: 14pt 0 6pt 0; }
+        table.grid { width: 100%; border-collapse: collapse; margin: 4pt 0 12pt 0; }
+        table.grid th { background: #d9d9d9; border: 1px solid #000000; padding: 4pt 6pt; font-size: 9pt; text-align: left; }
+        table.grid td { border: 1px solid #000000; padding: 4pt 6pt; font-size: 9pt; vertical-align: top; }
+        table.grid.center th, table.grid.center td { text-align: center; }
+        table.narrow { width: 60%; margin-left: 20%; }
+        .label-u { text-decoration: underline; }
+        .italic { font-style: italic; }
+        .toc td { padding: 3pt 0; font-size: 10pt; }
+        .toc .toc-section { color: #1e9bd7; font-weight: bold; padding-top: 6pt; }
+        .goal { border-left: 3pt solid #1e9bd7; background: #f2f8fc; padding: 6pt 10pt; margin: 8pt 0 12pt 0; }
+        table.kpi { width: 100%; border-collapse: separate; border-spacing: 6pt; margin: 6pt 0 10pt 0; }
+        table.kpi td { width: 16%; border: 1px solid #c9d6e3; background: #f4f8fc; padding: 8pt; text-align: center; vertical-align: top; }
+        .kpi-value { font-size: 18pt; font-weight: bold; color: #0b3d7a; }
+        .kpi-label { font-size: 7.5pt; color: #4d5b6b; text-transform: uppercase; }
+        .status { font-weight: bold; padding: 1pt 4pt; white-space: nowrap; }
+        .tc-block { page-break-inside: avoid; margin-top: 14pt; padding-top: 6pt; border-top: 1px solid #c9d6e3; }
+        .status-pass { color: #006644; background: #e3fcef; }
+        .status-fail { color: #bf2600; background: #ffebe6; }
+        .status-blocked { color: #974f0c; background: #fff4e5; }
+        .status-not-run { color: #42526e; background: #ebecf0; }
+        .screenshot { max-width: 100%; margin: 6pt 0 2pt 0; border: 1px solid #cccccc; }
+        .footer-note { margin-top: 16pt; color: #6b6b6b; font-size: 8pt; }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ Cover -->
+    <c:ProjectExportLogo logoUrl="{!logoUrl}" isWord="{!isWord}" />
+    <div class="cover">
+        <c:ProjectExportLogo logoUrl="{!logoUrl}" isWord="{!isWord}" big="true" />
+        <div class="doc-title">Business Requirements Document (BRD)<br />&amp; Solution Design</div>
+        <div class="doc-sub">{!brd.Business_Area__c}</div>
+        <table class="grid">
+            <tr><th style="width:25%">PBI ID</th><th>Name</th></tr>
+            <tr><td>{!brd.PBI_ID__c}</td><td>{!brd.Name}</td></tr>
+        </table>
+        <p class="muted">Version {!brd.Version__c} · {!brd.Status__c} · Generated {!generatedOn} by {!generatedBy}</p>
+    </div>
+
+    <!-- ============================================================ Table of contents -->
+    <div class="page-break"></div>
+    <c:ProjectExportLogo logoUrl="{!logoUrl}" isWord="{!isWord}" />
+    <h1 class="title" style="text-align:center">Table of Contents</h1>
+    <table class="toc" style="width:70%; margin:16pt auto 0 auto">
+        <tr><td colspan="2" class="toc-section">Section One (BRD)</td></tr>
+        <tr><td style="width:24pt">1</td><td>Business Change Initiator and Impacted Users</td></tr>
+        <tr><td>2</td><td>Known Systems Impacted</td></tr>
+        <tr><td>3</td><td>Business Requirements</td></tr>
+        <tr><td>4</td><td>Sign Off</td></tr>
+        <tr><td colspan="2" class="toc-section">Section Two (Solution Design)</td></tr>
+        <tr><td>5</td><td>Solution</td></tr>
+    </table>
+
+    <!-- ============================================================ Section One -->
+    <div class="page-break"></div>
+    <c:ProjectExportLogo logoUrl="{!logoUrl}" isWord="{!isWord}" />
+    <h2 class="section">Section One (BRD)</h2>
+
+    <h3>1&#160;&#160;Business Change Initiator and Impacted Users</h3>
+    <table class="grid narrow">
+        <tr><th style="width:45%">Role</th><th>Name</th></tr>
+        <tr><td style="text-align:center">Business Analyst</td><td>{!brd.Business_Analyst__c}</td></tr>
+        <tr><td style="text-align:center">Business Requestor</td><td>{!brd.Business_Requestor__c}</td></tr>
+        <tr><td style="text-align:center">Impacted Users</td><td class="italic">{!brd.Impacted_Users__c}</td></tr>
+    </table>
+
+    <h3>2&#160;&#160;Known Systems Impacted</h3>
+    <table class="grid center" style="width:40%; margin-left:30%">
+        <tr><th>Systems Impacted</th></tr>
+        <apex:repeat value="{!systems}" var="sys">
+            <tr><td>{!sys}</td></tr>
+        </apex:repeat>
+    </table>
+
+    <h3>3&#160;&#160;Business Requirements</h3>
+    <table class="grid">
+        <tr>
+            <th style="width:13%">Business Req #</th>
+            <th>Business Requirement / Acceptance Criteria</th>
+            <th style="width:15%">System(s) Impacted</th>
+            <th style="width:18%">Additional Information</th>
+        </tr>
+        <apex:repeat value="{!requirements}" var="r">
+            <tr>
+                <td>{!r.num}</td>
+                <td>
+                    <span class="label-u">Requirement</span>
+                    <ul><apex:repeat value="{!r.requirementLines}" var="l"><li>{!l}</li></apex:repeat></ul>
+                    <span class="label-u">Acceptance Criteria</span>
+                    <ul><apex:repeat value="{!r.criteriaLines}" var="l"><li>{!l}</li></apex:repeat></ul>
+                </td>
+                <td>{!r.systems}</td>
+                <td><apex:repeat value="{!r.infoLines}" var="l"><p>{!l}</p></apex:repeat></td>
+            </tr>
+        </apex:repeat>
+    </table>
+
+    <h3>4&#160;&#160;Sign-Off</h3>
+    <p class="muted">Requirements and scope will be locked upon approval. Any changes will require an approved project change request and updated document.
+        IT Delivery BRD approval is assumed once the document is sent for business approval.</p>
+    <table class="grid narrow">
+        <tr><th></th><th>Printed Name</th><th style="width:25%">Date</th></tr>
+        <tr>
+            <td>Business Change Initiator</td><td>{!brd.Initiator_Name__c}</td>
+            <td><apex:outputText value="{0,date,dd/MM/yyyy}"><apex:param value="{!brd.Initiator_Date__c}" /></apex:outputText></td>
+        </tr>
+        <tr>
+            <td>IT Delivery BRD Approver</td><td>{!brd.IT_Approver_Name__c}</td>
+            <td><apex:outputText value="{0,date,dd/MM/yyyy}"><apex:param value="{!brd.IT_Approver_Date__c}" /></apex:outputText></td>
+        </tr>
+        <tr>
+            <td>IT Architect Approver</td><td>{!IF(ISBLANK(brd.Architect_Approver_Name__c), 'N/A', brd.Architect_Approver_Name__c)}</td>
+            <td><apex:outputText value="{0,date,dd/MM/yyyy}"><apex:param value="{!brd.Architect_Approver_Date__c}" /></apex:outputText></td>
+        </tr>
+    </table>
+
+    <!-- ============================================================ Section Two -->
+    <div class="page-break"></div>
+    <c:ProjectExportLogo logoUrl="{!logoUrl}" isWord="{!isWord}" />
+    <h2 class="section">Section Two (Solution Design)</h2>
+
+    <h3>5&#160;&#160;Solution</h3>
+    <table class="grid">
+        <tr><th style="width:13%">Business Req #</th><th>Solution</th><th style="width:18%">System(s) Impacted</th></tr>
+        <apex:repeat value="{!requirements}" var="r">
+            <tr>
+                <td>{!r.num}</td>
+                <td><ul><apex:repeat value="{!r.solutionLines}" var="l"><li>{!l}</li></apex:repeat></ul></td>
+                <td>{!r.solutionSystems}</td>
+            </tr>
+        </apex:repeat>
+    </table>
+
+    <table class="grid narrow">
+        <tr><th></th><th>Printed Name</th><th style="width:25%">Date</th></tr>
+        <tr>
+            <td>Solution Designer</td><td>{!brd.Solution_Designer_Name__c}</td>
+            <td><apex:outputText value="{0,date,dd/MM/yyyy}"><apex:param value="{!brd.Solution_Designer_Date__c}" /></apex:outputText></td>
+        </tr>
+        <tr>
+            <td>Solution Reviewer</td><td>{!brd.Solution_Reviewer_Name__c}</td>
+            <td><apex:outputText value="{0,date,dd/MM/yyyy}"><apex:param value="{!brd.Solution_Reviewer_Date__c}" /></apex:outputText></td>
+        </tr>
+    </table>
+
+    <apex:repeat value="{!images}" var="img">
+        <div style="page-break-inside: avoid">
+            <img class="screenshot" src="{!img.dataUri}" alt="{!img.title}" />
+            <p class="muted">{!img.title}</p>
+        </div>
+    </apex:repeat>
+    <apex:outputPanel layout="none" rendered="{!isWord}">
+        <p class="footer-note">Solution screenshots are attached to the BRD in the Project Board app (images are included in the PDF version).</p>
+    </apex:outputPanel>
+</body>
+</html>
+</apex:page>

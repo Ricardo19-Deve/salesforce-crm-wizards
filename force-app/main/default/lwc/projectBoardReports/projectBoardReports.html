@@ -1,0 +1,132 @@
+<template>
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb">Projects / {projectName}</div>
+            <h1 class="page-title">Reports</h1>
+            <div class="page-sub">Sprint delivery, velocity and printable sprint reports (PDF / Word)</div>
+        </div>
+    </div>
+
+    <template lwc:if={hasReports}>
+        <!-- ---------------------------------------------------------- Velocity -->
+        <section class="panel glass">
+            <div class="panel-head">
+                <div>
+                    <h2 class="panel-title">Velocity</h2>
+                    <div class="panel-sub">Story points committed vs delivered per sprint</div>
+                </div>
+                <div class="hero">
+                    <span class="hero-value">{velocityLabel}</span>
+                    <span class="hero-label">Average velocity (completed sprints)</span>
+                </div>
+            </div>
+            <div class="legend">
+                <span class="legend-item"><span class="swatch swatch-committed"></span>Committed</span>
+                <span class="legend-item"><span class="swatch swatch-delivered"></span>Delivered</span>
+            </div>
+            <template lwc:if={hasChart}>
+                <div
+                    class="chart"
+                    role="img"
+                    aria-label="Velocity chart: committed vs delivered story points per sprint"
+                >
+                    <div class="grid">
+                        <template for:each={gridLines} for:item="g">
+                            <div key={g.key} class="grid-line" style={g.style}>
+                                <span>{g.label}</span>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="plot">
+                        <template for:each={bars} for:item="b">
+                            <div
+                                key={b.id}
+                                class={b.groupClass}
+                                data-index={b.index}
+                                onmouseenter={handleBarEnter}
+                                onmouseleave={handleBarLeave}
+                            >
+                                <div class="bars">
+                                    <div class="bar bar-committed" style={b.committedStyle}></div>
+                                    <div class="bar bar-delivered" style={b.deliveredStyle}>
+                                        <span class="bar-label">{b.deliveredPoints}</span>
+                                    </div>
+                                </div>
+                                <div class="bar-name" title={b.name}>{b.shortName}</div>
+                                <template lwc:if={b.showTip}>
+                                    <div class="tip glass">
+                                        <div class="tip-title">{b.name}</div>
+                                        <div class="tip-row">
+                                            <span class="swatch swatch-committed"></span>Committed
+                                            <strong>{b.committedPoints}</strong>
+                                        </div>
+                                        <div class="tip-row">
+                                            <span class="swatch swatch-delivered"></span>Delivered
+                                            <strong>{b.deliveredPoints}</strong>
+                                        </div>
+                                        <div class="tip-row muted">{b.completion}% complete · {b.statusLabel}</div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </section>
+
+        <!-- ---------------------------------------------------------- Sprint cards -->
+        <div class="cards">
+            <template for:each={cards} for:item="s">
+                <article key={s.id} class="card glass">
+                    <div class="card-head">
+                        <div class="ring" style={s.ringStyle}>
+                            <span>{s.completion}%</span>
+                        </div>
+                        <div class="card-title">
+                            <div class="card-name">{s.name} <span class={s.statusClass}>{s.statusLabel}</span></div>
+                            <div class="card-dates">{s.dates}</div>
+                        </div>
+                    </div>
+                    <template lwc:if={s.goal}><p class="card-goal">{s.goal}</p></template>
+                    <div class="stats">
+                        <div class="stat">
+                            <span class="stat-value">{s.deliveredIssues}/{s.committedIssues}</span
+                            ><span class="stat-label">Issues</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">{s.deliveredPoints}/{s.committedPoints}</span
+                            ><span class="stat-label">Points</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">{s.bugsFixed}</span><span class="stat-label">Bugs fixed</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">{s.notDone}</span><span class="stat-label">{s.notDoneLabel}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">{s.testsLabel}</span><span class="stat-label">Tests passed</span>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <a class="btn btn-sm btn-primary" href={s.pdfUrl} target="_blank" rel="noopener">
+                            <lightning-icon
+                                icon-name="utility:download"
+                                size="xx-small"
+                                variant="inverse"
+                            ></lightning-icon>
+                            Sprint report PDF
+                        </a>
+                        <a class="btn btn-sm" href={s.wordUrl} target="_blank" rel="noopener">
+                            <lightning-icon icon-name="doctype:word" size="x-small"></lightning-icon>
+                            Word
+                        </a>
+                    </div>
+                </article>
+            </template>
+        </div>
+    </template>
+
+    <template lwc:else>
+        <div class="empty glass">Start a sprint from the backlog to see delivery reports here.</div>
+    </template>
+</template>

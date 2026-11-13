@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Epic__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>Epic</label>
+    <referenceTo>PM_Issue__c</referenceTo>
+    <relationshipLabel>Epic Children</relationshipLabel>
+    <relationshipName>Epic_Children</relationshipName>
+    <required>false</required>
+    <trackHistory>true</trackHistory>
+    <type>Lookup</type>
+</CustomField>
