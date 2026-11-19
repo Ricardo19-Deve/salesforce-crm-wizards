@@ -10,20 +10,24 @@
         </div>
         <div class="ts-actions">
             <template lwc:if={hasRequirements}>
-                <button
-                    class="btn btn-sm"
-                    disabled={busy}
-                    onclick={handleGenerate}
-                    title="Create one test case per BRD acceptance criterion"
+                <template lwc:if={canEdit}
+                    ><button
+                        class="btn btn-sm"
+                        disabled={busy}
+                        onclick={handleGenerate}
+                        title="Create one test case per BRD acceptance criterion"
+                    >
+                        <lightning-icon icon-name="utility:magicwand" size="xx-small"></lightning-icon>
+                        Generate from BRD
+                    </button></template
                 >
-                    <lightning-icon icon-name="utility:magicwand" size="xx-small"></lightning-icon>
-                    Generate from BRD
-                </button>
             </template>
-            <button class="btn btn-sm btn-primary" disabled={busy} onclick={handleAdd}>
-                <lightning-icon icon-name="utility:add" size="xx-small" variant="inverse"></lightning-icon>
-                Test case
-            </button>
+            <template lwc:if={canEdit}
+                ><button class="btn btn-sm btn-primary" disabled={busy} onclick={handleAdd}>
+                    <lightning-icon icon-name="utility:add" size="xx-small" variant="inverse"></lightning-icon>
+                    Test case
+                </button></template
+            >
             <a class="btn btn-sm" href={pdfUrl} target="_blank" rel="noopener">
                 <lightning-icon icon-name="doctype:pdf" size="x-small"></lightning-icon>
                 PDF
@@ -59,6 +63,7 @@
                                 class={r.cls}
                                 data-id={tc.Id}
                                 data-value={r.value}
+                                disabled={readOnly}
                                 onclick={handleResult}
                             >
                                 {r.value}
@@ -83,6 +88,7 @@
                             <div class="span-2">
                                 <label class="field-label">Title</label>
                                 <input
+                                    disabled={readOnly}
                                     class="field-input"
                                     type="text"
                                     maxlength="255"
@@ -95,6 +101,7 @@
                             <div>
                                 <label class="field-label">Business Req #</label>
                                 <select
+                                    disabled={readOnly}
                                     class="field-select"
                                     data-id={tc.Id}
                                     data-field="Requirement__c"
@@ -109,6 +116,7 @@
                                 <div>
                                     <label class="field-label">Preconditions</label>
                                     <textarea
+                                        disabled={readOnly}
                                         class="field-textarea"
                                         data-id={tc.Id}
                                         data-field="Preconditions__c"
@@ -120,6 +128,7 @@
                                 <div>
                                     <label class="field-label">Test data</label>
                                     <textarea
+                                        disabled={readOnly}
                                         class="field-textarea"
                                         data-id={tc.Id}
                                         data-field="Test_Data__c"
@@ -140,6 +149,7 @@
                                 <div key={s.key} class="step">
                                     <span class="step-num">{s.num}</span>
                                     <textarea
+                                        disabled={readOnly}
                                         class="step-input"
                                         data-id={tc.Id}
                                         data-index={s.index}
@@ -150,6 +160,7 @@
                                         onblur={handleStepBlur}
                                     ></textarea>
                                     <textarea
+                                        disabled={readOnly}
                                         class="step-input"
                                         data-id={tc.Id}
                                         data-index={s.index}
@@ -160,6 +171,7 @@
                                         onblur={handleStepBlur}
                                     ></textarea>
                                     <textarea
+                                        disabled={readOnly}
                                         class="step-input"
                                         data-id={tc.Id}
                                         data-index={s.index}
@@ -169,25 +181,32 @@
                                         oninput={handleStepInput}
                                         onblur={handleStepBlur}
                                     ></textarea>
-                                    <button
-                                        class="icon-btn icon-btn-sm"
-                                        title="Remove step"
-                                        data-id={tc.Id}
-                                        data-index={s.index}
-                                        onclick={handleRemoveStep}
-                                    >
-                                        <lightning-icon icon-name="utility:close" size="xx-small"></lightning-icon>
-                                    </button>
+                                    <template lwc:if={canEdit}
+                                        ><button
+                                            class="icon-btn icon-btn-sm"
+                                            title="Remove step"
+                                            data-id={tc.Id}
+                                            data-index={s.index}
+                                            onclick={handleRemoveStep}
+                                        >
+                                            <lightning-icon
+                                                icon-name="utility:close"
+                                                size="xx-small"
+                                            ></lightning-icon></button
+                                    ></template>
                                 </div>
                             </template>
-                            <button class="add-step" data-id={tc.Id} onclick={handleAddStep}>
-                                <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
-                                Add step
-                            </button>
+                            <template lwc:if={canEdit}
+                                ><button class="add-step" data-id={tc.Id} onclick={handleAddStep}>
+                                    <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
+                                    Add step
+                                </button></template
+                            >
                         </div>
 
                         <label class="field-label">Comments</label>
                         <textarea
+                            disabled={readOnly}
                             class="field-textarea"
                             data-id={tc.Id}
                             data-field="Comments__c"
@@ -197,6 +216,7 @@
 
                         <div class="evidence">
                             <c-project-board-attachments
+                                read-only={readOnly}
                                 record-id={tc.Id}
                                 heading="Evidence"
                                 hint="Drop screenshots / files as test evidence"
@@ -204,10 +224,12 @@
                         </div>
 
                         <div class="tc-foot">
-                            <button class="btn btn-sm btn-subtle danger" data-id={tc.Id} onclick={handleDelete}>
-                                <lightning-icon icon-name="utility:delete" size="xx-small"></lightning-icon>
-                                Delete test case
-                            </button>
+                            <template lwc:if={canEdit}
+                                ><button class="btn btn-sm btn-subtle danger" data-id={tc.Id} onclick={handleDelete}>
+                                    <lightning-icon icon-name="utility:delete" size="xx-small"></lightning-icon>
+                                    Delete test case
+                                </button></template
+                            >
                         </div>
                     </div>
                 </template>

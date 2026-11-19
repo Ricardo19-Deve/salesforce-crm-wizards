@@ -2,6 +2,7 @@
     <!-- ============================================================ CREATE -->
     <template lwc:if={isCreate}>
         <div class="jm-overlay">
+            <span class="focus-sentinel" tabindex="0" onfocus={focusLast}></span>
             <section
                 role="dialog"
                 tabindex="-1"
@@ -155,12 +156,14 @@
                     <button class="btn btn-primary" disabled={busy} onclick={handleCreate}>Create</button>
                 </div>
             </section>
+            <span class="focus-sentinel" tabindex="0" onfocus={focusFirst}></span>
         </div>
     </template>
 
     <!-- ============================================================ VIEW / EDIT -->
     <template lwc:else>
         <div class="jm-overlay">
+            <span class="focus-sentinel" tabindex="0" onfocus={focusLast}></span>
             <section
                 role="dialog"
                 tabindex="-1"
@@ -201,10 +204,11 @@
                                     <lightning-spinner size="x-small" alternative-text="Saving"></lightning-spinner>
                                 </div>
                             </template>
-                            <button class="icon-btn" title="Delete issue" onclick={handleDelete}>
-                                <lightning-icon icon-name="utility:delete" size="x-small"></lightning-icon>
-                            </button>
-                            <button class="icon-btn" title="Close (Esc)" onclick={close}>
+                            <template lwc:if={canEdit}
+                                ><button class="icon-btn" title="Delete issue" onclick={handleDelete}>
+                                    <lightning-icon icon-name="utility:delete" size="x-small"></lightning-icon></button
+                            ></template>
+                            <button class="icon-btn close-btn" title="Close (Esc)" aria-label="Close" onclick={close}>
                                 <lightning-icon icon-name="utility:close" size="x-small"></lightning-icon>
                             </button>
                         </div>
@@ -215,6 +219,7 @@
                         <div class="detail-main">
                             <template lwc:if={editingSummary}>
                                 <input
+                                    disabled={readOnly}
                                     class="summary-input"
                                     type="text"
                                     maxlength="255"
@@ -276,13 +281,15 @@
                                     <div class="block">
                                         <div class="block-head">
                                             <h3 class="block-title">Child issues</h3>
-                                            <button class="btn btn-sm btn-subtle" onclick={createChild}>
-                                                <lightning-icon
-                                                    icon-name="utility:add"
-                                                    size="xx-small"
-                                                ></lightning-icon>
-                                                Add child issue
-                                            </button>
+                                            <template lwc:if={canEdit}
+                                                ><button class="btn btn-sm btn-subtle" onclick={createChild}>
+                                                    <lightning-icon
+                                                        icon-name="utility:add"
+                                                        size="xx-small"
+                                                    ></lightning-icon>
+                                                    Add child issue
+                                                </button></template
+                                            >
                                         </div>
                                         <template lwc:if={hasChildren}>
                                             <div class="progress">
@@ -334,41 +341,46 @@
                                     </div>
 
                                     <template lwc:if={isCommentsTab}>
-                                        <div class="comment-new">
-                                            <span class="avatar" style={myAvatarStyle}>
-                                                <lightning-icon
-                                                    icon-name="utility:user"
-                                                    size="x-small"
-                                                    variant="inverse"
-                                                ></lightning-icon>
-                                            </span>
-                                            <div class="comment-editor">
-                                                <template lwc:if={commentEditing}>
-                                                    <lightning-input-rich-text
-                                                        value={commentDraft}
-                                                        onchange={handleCommentInput}
-                                                        label="Comment"
-                                                    ></lightning-input-rich-text>
-                                                    <div class="edit-actions">
-                                                        <button
-                                                            class="btn btn-primary btn-sm"
-                                                            disabled={busy}
-                                                            onclick={saveComment}
-                                                        >
-                                                            Save
-                                                        </button>
-                                                        <button class="btn btn-subtle btn-sm" onclick={cancelComment}>
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                </template>
-                                                <template lwc:else>
-                                                    <div class="fake-input" onclick={startComment}>
-                                                        Add a comment...
-                                                    </div>
-                                                </template>
-                                            </div>
-                                        </div>
+                                        <template lwc:if={canEdit}
+                                            ><div class="comment-new">
+                                                <span class="avatar" style={myAvatarStyle}>
+                                                    <lightning-icon
+                                                        icon-name="utility:user"
+                                                        size="x-small"
+                                                        variant="inverse"
+                                                    ></lightning-icon>
+                                                </span>
+                                                <div class="comment-editor">
+                                                    <template lwc:if={commentEditing}>
+                                                        <lightning-input-rich-text
+                                                            value={commentDraft}
+                                                            onchange={handleCommentInput}
+                                                            label="Comment"
+                                                        ></lightning-input-rich-text>
+                                                        <div class="edit-actions">
+                                                            <button
+                                                                class="btn btn-primary btn-sm"
+                                                                disabled={busy}
+                                                                onclick={saveComment}
+                                                            >
+                                                                Save
+                                                            </button>
+                                                            <button
+                                                                class="btn btn-subtle btn-sm"
+                                                                onclick={cancelComment}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </template>
+                                                    <template lwc:else>
+                                                        <div class="fake-input" onclick={startComment}>
+                                                            Add a comment...
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div></template
+                                        >
                                         <template for:each={commentRows} for:item="c">
                                             <div key={c.id} class="comment">
                                                 <span class="avatar" style={c.style}>{c.initials}</span>
@@ -435,6 +447,7 @@
                             </template>
                             <template lwc:elseif={isBrdTab}>
                                 <c-project-board-brd
+                                    read-only={readOnly}
                                     issue-id={issue.id}
                                     issue={issue}
                                     onchanged={handleDocsChanged}
@@ -442,12 +455,14 @@
                             </template>
                             <template lwc:elseif={isTestsTab}>
                                 <c-project-board-test-scripts
+                                    read-only={readOnly}
                                     issue-id={issue.id}
                                     onchanged={handleDocsChanged}
                                 ></c-project-board-test-scripts>
                             </template>
                             <template lwc:else>
                                 <c-project-board-attachments
+                                    read-only={readOnly}
                                     record-id={issue.id}
                                     onchange={handleDocsChanged}
                                 ></c-project-board-attachments>
@@ -458,6 +473,7 @@
                             <!-- ---------- Side column -->
                             <div class="detail-side">
                                 <select
+                                    disabled={readOnly}
                                     class={statusSelectClass}
                                     data-field="Status__c"
                                     onchange={handleSelectChange}
@@ -475,6 +491,7 @@
                                         <label class="detail-label">Assignee</label>
                                         <div class="detail-value">
                                             <lightning-record-picker
+                                                disabled={readOnly}
                                                 object-api-name="User"
                                                 label="Assignee"
                                                 variant="label-hidden"
@@ -485,9 +502,11 @@
                                                 matching-info={userMatchingInfo}
                                                 onchange={handleAssigneeChange}
                                             ></lightning-record-picker>
-                                            <button class="btn btn-link btn-sm" onclick={assignToMe}>
-                                                Assign to me
-                                            </button>
+                                            <template lwc:if={canEdit}
+                                                ><button class="btn btn-link btn-sm" onclick={assignToMe}>
+                                                    Assign to me
+                                                </button></template
+                                            >
                                         </div>
                                     </div>
 
@@ -506,6 +525,7 @@
                                         <div class="detail-value select-with-icon">
                                             <span class={issue.prioClass}>{issue.prioGlyph}</span>
                                             <select
+                                                disabled={readOnly}
                                                 class="field-select"
                                                 data-field="Priority__c"
                                                 onchange={handleSelectChange}
@@ -530,6 +550,7 @@
                                                 ></lightning-icon>
                                             </span>
                                             <select
+                                                disabled={readOnly}
                                                 class="field-select"
                                                 data-field="Type__c"
                                                 onchange={handleSelectChange}
@@ -547,6 +568,7 @@
                                         <label class="detail-label">Sprint</label>
                                         <div class="detail-value">
                                             <select
+                                                disabled={readOnly}
                                                 class="field-select"
                                                 data-field="Sprint__c"
                                                 onchange={handleSelectChange}
@@ -565,6 +587,7 @@
                                             <label class="detail-label">Epic</label>
                                             <div class="detail-value">
                                                 <select
+                                                    disabled={readOnly}
                                                     class="field-select"
                                                     data-field="Epic__c"
                                                     onchange={handleSelectChange}
@@ -583,6 +606,7 @@
                                         <label class="detail-label">Story points</label>
                                         <div class="detail-value">
                                             <input
+                                                disabled={readOnly}
                                                 class="field-input"
                                                 type="number"
                                                 min="0"
@@ -598,6 +622,7 @@
                                         <label class="detail-label">Due date</label>
                                         <div class="detail-value">
                                             <input
+                                                disabled={readOnly}
                                                 class="field-input"
                                                 type="date"
                                                 aria-label="Due date"
@@ -611,6 +636,7 @@
                                         <label class="detail-label">Labels</label>
                                         <div class="detail-value">
                                             <input
+                                                disabled={readOnly}
                                                 class="field-input"
                                                 type="text"
                                                 maxlength="255"
@@ -651,6 +677,7 @@
                     <div class="empty">This issue may have been deleted.</div>
                 </template>
             </section>
+            <span class="focus-sentinel" tabindex="0" onfocus={focusFirst}></span>
         </div>
     </template>
 </template>

@@ -17,6 +17,7 @@
     <nameField><label>Document Name</label><trackHistory>false</trackHistory><type>Text</type></nameField>
     <pluralLabel>PM BRDs</pluralLabel>
     <searchLayouts/>
-    <sharingModel>ReadWrite</sharingModel>
+    <sharingModel>Private</sharingModel>
+    <externalSharingModel>Private</externalSharingModel>
     <visibility>Public</visibility>
 </CustomObject>

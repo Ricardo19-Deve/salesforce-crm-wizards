@@ -47,7 +47,7 @@ private class ProjectDocsControllerTest {
             System.assert(brd.Requirements__r[0].Requirement__c.contains('UK bookings reopen'));
 
             ProjectDocsController.saveBrd(new Map<String, Object>{
-                'Id' => brd.Id, 'Business_Analyst__c' => 'Ana', 'Initiator_Date__c' => '2025-04-11'
+                'Id' => brd.Id, 'Business_Analyst__c' => 'Ana', 'Business_Requestor__c' => 'Rui'
             });
             PM_Requirement__c req2 = ProjectDocsController.addRequirement(brd.Id);
             System.assertEquals('BRD0002', req2.Name);

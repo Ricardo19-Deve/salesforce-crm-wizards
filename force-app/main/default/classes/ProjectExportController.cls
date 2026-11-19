@@ -32,6 +32,8 @@ public with sharing class ProjectExportController {
     public List<RequirementView> requirements { get; private set; }
     public List<String> systems { get; private set; }
     public List<ImageView> images { get; private set; }
+    public List<SignOffRow> brdSignOffs { get; private set; }
+    public List<SignOffRow> solutionSignOffs { get; private set; }
 
     // ---- Test scripts
     public PM_Issue__c issue { get; private set; }
@@ -70,6 +72,16 @@ public with sharing class ProjectExportController {
         public List<String> infoLines { get; set; }
         public List<String> solutionLines { get; set; }
         public String solutionSystems { get; set; }
+    }
+
+    /** One recorded approval: the name and the date come from the approver's own decision. */
+    public class SignOffRow {
+        public String role { get; set; }
+        public String approver { get; set; }
+        public String status { get; set; }
+        public String decided { get; set; }
+        public String comments { get; set; }
+        public String statusClass { get; set; }
     }
 
     public class ImageView {
@@ -138,12 +150,12 @@ public with sharing class ProjectExportController {
         Id brdId = recordIdParam();
         brd = [
             SELECT Id, Name, PBI_ID__c, Business_Area__c, Status__c, Version__c, Business_Analyst__c,
-                Business_Requestor__c, Impacted_Users__c, Systems_Impacted__c, Initiator_Name__c, Initiator_Date__c,
-                IT_Approver_Name__c, IT_Approver_Date__c, Architect_Approver_Name__c, Architect_Approver_Date__c,
-                Solution_Designer_Name__c, Solution_Designer_Date__c, Solution_Reviewer_Name__c, Solution_Reviewer_Date__c,
+                Business_Requestor__c, Impacted_Users__c, Systems_Impacted__c,
                 (SELECT Name, Requirement__c, Acceptance_Criteria__c, Systems_Impacted__c, Additional_Info__c,
                     Solution__c, Solution_Systems__c
-                 FROM Requirements__r ORDER BY Sequence__c)
+                 FROM Requirements__r ORDER BY Sequence__c),
+                (SELECT Role__c, Section__c, Approver__r.Name, Status__c, Decision_Date__c, Comments__c
+                 FROM Sign_Offs__r ORDER BY Sequence__c)
             FROM PM_BRD__c
             WHERE Id = :brdId
             WITH USER_MODE
@@ -160,6 +172,22 @@ public with sharing class ProjectExportController {
             v.solutionLines = ProjectDocsController.splitLines(r.Solution__c);
             v.solutionSystems = r.Solution_Systems__c;
             requirements.add(v);
+        }
+        brdSignOffs = new List<SignOffRow>();
+        solutionSignOffs = new List<SignOffRow>();
+        for (PM_Sign_Off__c so : brd.Sign_Offs__r) {
+            SignOffRow row = new SignOffRow();
+            row.role = so.Role__c;
+            row.approver = so.Status__c == 'Not Required' ? 'N/A' : (so.Approver__r == null ? '' : so.Approver__r.Name);
+            row.status = so.Status__c;
+            row.decided = so.Decision_Date__c == null ? '' : so.Decision_Date__c.format('dd/MM/yyyy HH:mm');
+            row.comments = so.Comments__c;
+            row.statusClass = 'status status-' + (so.Status__c == null ? 'pending' : so.Status__c.toLowerCase().replace(' ', '-'));
+            if (so.Section__c == 'Solution Design') {
+                solutionSignOffs.add(row);
+            } else {
+                brdSignOffs.add(row);
+            }
         }
         images = isWord ? new List<ImageView>() : loadImages(brd.Id);
         setFileName('BRD ' + (String.isBlank(brd.PBI_ID__c) ? '' : brd.PBI_ID__c + ' ') + brd.Name);

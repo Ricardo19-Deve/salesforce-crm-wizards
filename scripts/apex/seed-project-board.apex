@@ -2,7 +2,8 @@
 // Run after assigning the Project_Board_User permission set to yourself:
 //   sf apex run -o <org> -f scripts/apex/seed-project-board.apex
 // Creates the project "Northwind CRM Rollout" (NW) with a completed sprint, an active sprint, a planned sprint,
-// epics, issues in every status, comments, a BRD and test scripts. Safe to re-run: it stops if NW already exists.
+// epics, issues in every status, comments, a BRD waiting for sign-off and test scripts. You become the project
+// lead (the only member): add colleagues from the Members dialog. Safe to re-run: it stops if NW already exists.
 
 if (![SELECT Id FROM PM_Project__c WHERE Key__c = 'NW' LIMIT 1].isEmpty()) {
     System.debug('Project NW already exists - nothing to do.');
@@ -47,24 +48,28 @@ List<List<Object>> rows = new List<List<Object>>{
     new List<Object>{ 'Slow list views on Cases', 'Bug', 'To Do', 'Medium', null, 0, null, false, 'performance' }
 };
 Map<Integer, Id> sprintIds = new Map<Integer, Id>{ 1 => sprint1.Id, 2 => sprint2.Id, 3 => sprint3.Id };
-Map<String, Id> issueIds = new Map<String, Id>();
+// Issues are inserted in bulk (one DML) so the whole seed stays well inside the governor limits
+Integer counter = Integer.valueOf([SELECT Issue_Counter__c FROM PM_Project__c WHERE Id = :project.Id].Issue_Counter__c);
+List<PM_Issue__c> issues = new List<PM_Issue__c>();
 for (List<Object> r : rows) {
-    Map<String, Object> f = new Map<String, Object>{
-        'Project__c' => project.Id, 'Summary__c' => r[0], 'Type__c' => r[1], 'Status__c' => r[2],
-        'Priority__c' => r[3], 'Story_Points__c' => r[4], 'Labels__c' => r[8],
-        'Description__c' => '<p>Demo issue for the <b>Northwind CRM Rollout</b> project.</p>'
-    };
+    counter++;
     Integer sprintNo = (Integer) r[5];
-    if (sprintIds.containsKey(sprintNo)) {
-        f.put('Sprint__c', sprintIds.get(sprintNo));
-    }
-    if (r[6] != null) {
-        f.put('Epic__c', epics.get((String) r[6]));
-    }
-    if ((Boolean) r[7]) {
-        f.put('Assignee__c', me);
-    }
-    issueIds.put((String) r[0], ProjectBoardController.saveIssue(f).Id);
+    issues.add(new PM_Issue__c(
+        Project__c = project.Id, Name = 'NW-' + counter, Rank__c = counter, Reporter__c = me,
+        Summary__c = (String) r[0], Type__c = (String) r[1], Status__c = (String) r[2], Priority__c = (String) r[3],
+        Story_Points__c = (Decimal) r[4], Labels__c = (String) r[8],
+        Description__c = '<p>Demo issue for the <b>Northwind CRM Rollout</b> project.</p>',
+        Sprint__c = sprintIds.get(sprintNo),
+        Epic__c = r[6] == null ? null : epics.get((String) r[6]),
+        Assignee__c = (Boolean) r[7] ? me : null,
+        Resolved_Date__c = r[2] == 'Done' ? System.now() : null
+    ));
+}
+insert issues;
+update new PM_Project__c(Id = project.Id, Issue_Counter__c = counter);
+Map<String, Id> issueIds = new Map<String, Id>();
+for (PM_Issue__c i : issues) {
+    issueIds.put(i.Summary__c, i.Id);
 }
 
 // Sprint 1 completed (open work carried over to sprint 2), sprint 2 active
@@ -82,9 +87,7 @@ ProjectBoardController.addComment(offline, '<p>Let us demo this in the sprint re
 PM_BRD__c brd = ProjectDocsController.createBrd(offline);
 ProjectDocsController.saveBrd(new Map<String, Object>{
     'Id' => brd.Id, 'PBI_ID__c' => 'PBI-0042', 'Business_Analyst__c' => 'Maria Santos',
-    'Business_Requestor__c' => 'Tomas Novak', 'Initiator_Name__c' => 'Northwind Sales Operations',
-    'Initiator_Date__c' => String.valueOf(Date.today().addDays(-12)), 'IT_Approver_Name__c' => 'Alex Morgan',
-    'IT_Approver_Date__c' => String.valueOf(Date.today().addDays(-11))
+    'Business_Requestor__c' => 'Tomas Novak'
 });
 ProjectDocsController.saveRequirement(new Map<String, Object>{
     'Id' => brd.Requirements__r[0].Id,
@@ -100,4 +103,16 @@ ProjectDocsController.saveTestCase(new Map<String, Object>{
 });
 ProjectDocsController.saveTestCase(new Map<String, Object>{ 'Id' => cases[1].Id, 'Status__c' => 'Fail',
     'Comments__c' => 'Sync took 9 minutes on a slow network.' });
+
+// Sign-off: you approve two roles, the others are not required; one approval is already recorded
+for (PM_Sign_Off__c so : ProjectDocsController.getBrd(offline).Sign_Offs__r) {
+    Boolean skip = so.Role__c == 'IT Architect Approver' || so.Role__c == 'Solution Reviewer';
+    ProjectDocsController.assignSignOff(so.Id, skip ? null : me, skip);
+}
+ProjectDocsController.requestSignOff(brd.Id);
+for (PM_Sign_Off__c so : ProjectDocsController.getBrd(offline).Sign_Offs__r) {
+    if (so.Role__c == 'Business Change Initiator') {
+        ProjectDocsController.decideSignOff(so.Id, 'Approved', 'Scope matches the sales operations request.');
+    }
+}
 System.debug('Project Board demo data created: ' + project.Id);

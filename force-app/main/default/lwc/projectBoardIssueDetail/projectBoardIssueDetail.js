@@ -1,7 +1,8 @@
 /**
  * Issue modal: create form, or detail view with inline editing and tabs for Details (description, comments,
  * history), BRD, Test scripts and Attachments.
- * Gotchas: every field saves on its own; the parent reloads the board on "changed" so badges stay in sync.
+ * Gotchas: every field saves on its own; the parent reloads the board on "changed" so badges stay in sync. Focus is
+ * kept inside the dialog (sentinels) and readOnly disables every control for Viewers.
  */
 import { LightningElement, api } from 'lwc';
 import LightningConfirm from 'lightning/confirm';
@@ -42,6 +43,10 @@ export default class ProjectBoardIssueDetail extends LightningElement {
     @api currentUserId;
     @api mode = 'view';
     @api defaults;
+    /** Viewers see everything but cannot change the issue. */
+    @api readOnly = false;
+    /** Users who can be assignees (project Leads and Members); the picker only offers these. */
+    @api assignableUserIds = [];
 
     _issueId;
     _connected = false;
@@ -64,13 +69,6 @@ export default class ProjectBoardIssueDetail extends LightningElement {
     activityTab = 'comments';
     activeTab = 'details';
 
-    userFilter = {
-        criteria: [
-            { fieldPath: 'IsActive', operator: 'eq', value: true },
-            { fieldPath: 'UserType', operator: 'eq', value: 'Standard' }
-        ],
-        filterLogic: '1 AND 2'
-    };
     userDisplayInfo = { primaryField: 'Name', additionalFields: ['Title'] };
     userMatchingInfo = {
         primaryField: { fieldPath: 'Name' },
@@ -106,7 +104,53 @@ export default class ProjectBoardIssueDetail extends LightningElement {
         window.removeEventListener('keydown', this._onKeydown);
     }
 
+    get userFilter() {
+        const criteria = [
+            { fieldPath: 'IsActive', operator: 'eq', value: true },
+            { fieldPath: 'UserType', operator: 'eq', value: 'Standard' }
+        ];
+        const ids = this.assignableUserIds || [];
+        if (ids.length) criteria.push({ fieldPath: 'Id', operator: 'in', value: ids });
+        return {
+            criteria,
+            filterLogic: criteria.map((c, i) => i + 1).join(' AND ')
+        };
+    }
+
+    get canEdit() {
+        return !this.readOnly;
+    }
+
+    // ---------------------------------------------------------------- Focus management
+
+    focusables() {
+        return [
+            ...this.template.querySelectorAll(
+                '.jm-dialog button:not([disabled]), .jm-dialog a[href], .jm-dialog input:not([disabled]), ' +
+                    ".jm-dialog select:not([disabled]), .jm-dialog textarea:not([disabled]), .jm-dialog [tabindex='0']"
+            )
+        ];
+    }
+
+    /** Tab past the last control comes back to the first one, and the other way round. */
+    focusFirst() {
+        const items = this.focusables();
+        if (items.length) items[0].focus();
+    }
+
+    focusLast() {
+        const items = this.focusables();
+        if (items.length) items[items.length - 1].focus();
+    }
+
     renderedCallback() {
+        if (!this._initialFocusDone && !this.isCreate) {
+            const close = this.template.querySelector('.jm-dialog .close-btn');
+            if (close) {
+                close.focus();
+                this._initialFocusDone = true;
+            }
+        }
         if (this.focusSelector) {
             const el = this.template.querySelector(this.focusSelector);
             if (el) {
@@ -520,6 +564,7 @@ export default class ProjectBoardIssueDetail extends LightningElement {
 
     // Summary
     startEditSummary() {
+        if (this.readOnly) return;
         this.summaryDraft = this.issue.summary;
         this.editingSummary = true;
         this.focusSelector = '.summary-input';
@@ -547,6 +592,7 @@ export default class ProjectBoardIssueDetail extends LightningElement {
 
     // Description
     startEditDescription() {
+        if (this.readOnly) return;
         this.descriptionDraft = this.issue.description;
         this.editingDescription = true;
     }
@@ -576,6 +622,7 @@ export default class ProjectBoardIssueDetail extends LightningElement {
     }
 
     startComment() {
+        if (this.readOnly) return;
         this.commentEditing = true;
         this.commentDraft = '';
     }

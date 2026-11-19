@@ -11,7 +11,7 @@ This is a neutral open-source reference. It rewrites patterns I built in enterpr
 | **Opportunity + products wizard** | The price book is chosen from the Account's country (rule-based, with a fallback). The wizard saves the Opportunity and its lines in one transaction. The server decides the stage, price book and currency. |
 | **Contract sync pattern** | A Queueable and a Schedulable run an incremental sync with a watermark and an upsert on an external id. The sync reads a `ContractFeed.Source` interface. This repository only ships a **mock** source (static-resource JSON), so it makes no callouts. |
 | **Before-save Flow** | `Campaign_Set_Name` builds a consistent Campaign name. It is bulk-safe and uses no SOQL or DML. |
-| **Project Board** | Kanban board, backlog with sprints and epics, issue tracking, **BRD & solution design**, **UAT test scripts** generated from acceptance criteria, file attachments and **sprint reports**. Every document exports to PDF and Word. Runs as a Lightning tab or a full-screen Experience Cloud portal, with a light / dark glass UI. See [docs/project-board.md](docs/project-board.md). |
+| **Project Board** | Kanban board, backlog with sprints and epics, issue tracking, **BRD & solution design** with a **recorded sign-off workflow**, **UAT test scripts** generated from acceptance criteria, file attachments and **sprint reports**. Projects are private to their members (Lead / Member / Viewer), and the board and backlog work fully from the keyboard. Every document exports to PDF and Word. Runs as a Lightning tab or a full-screen Experience Cloud portal, with a light / dark glass UI. See [docs/project-board.md](docs/project-board.md). |
 
 ## Screenshots
 
@@ -31,9 +31,10 @@ Captured in a Developer Edition org with the demo data (fictitious companies and
 | --- | --- |
 | ![Board](docs/images/09-project-board.png) Board: active sprint, drag & drop, progress ring, BRD / test / file badges | ![Board dark](docs/images/10-project-board-dark.png) The same board in dark mode |
 | ![Backlog](docs/images/11-project-backlog.png) Backlog: sprints, epics panel with progress, quick create | ![Issue](docs/images/12-project-issue-detail.png) Issue: inline editing, comments, tabs for BRD / Test scripts / Attachments |
-| ![BRD](docs/images/13-project-brd.png) BRD: numbered requirements and acceptance criteria, sign-off | ![Test scripts](docs/images/14-project-test-scripts.png) Test scripts: steps, Pass / Fail / Blocked, generated from the BRD |
+| ![BRD](docs/images/13-project-brd.png) BRD out for approval: status, lock banner and the sign-offs waiting for you | ![Test scripts](docs/images/14-project-test-scripts.png) Test scripts: steps, Pass / Fail / Blocked, generated from the BRD |
 | ![Reports](docs/images/15-project-reports.png) Reports: velocity (committed vs delivered) and sprint cards | ![Sprint report PDF](docs/images/16-project-sprint-report-pdf.png) Sprint report exported to PDF |
-| ![BRD PDF](docs/images/17-project-brd-pdf.png) BRD exported to PDF (also available as Word) | |
+| ![BRD PDF](docs/images/17-project-brd-pdf.png) BRD exported to PDF with the recorded sign-off decisions (also available as Word) | ![Sign-off](docs/images/18-project-sign-off.png) Sign-off: one approved with a comment, one waiting for a decision, one not required |
+| ![Members](docs/images/19-project-members.png) Project members and their roles | ![Keyboard move](docs/images/20-project-keyboard-move.png) Keyboard move: the card is lifted with Space and the target column is highlighted |
 
 ## Architecture
 
@@ -144,11 +145,11 @@ The configuration guide is in [docs/configuration.md](docs/configuration.md). In
 
 ## Tests
 
-- **Apex:** 47 tests with `sf apex run test -l RunLocalTests -c`, all passing in a Developer Edition org on 19 Nov 2026 (the previous 46 also in a fresh scratch org, 90% org-wide coverage, project classes 70–100%). The CI runs them too when a Dev Hub is connected (see below).
+- **Apex:** 55 tests with `sf apex run test -l RunLocalTests -c`, all passing in a Developer Edition org on 19 Nov 2026 (91% org-wide coverage, Project Board classes 87–95%). The earlier wizard suite of 46 tests also passed in a fresh scratch org. The CI runs them too when a Dev Hub is connected (see below).
 - **Org-dependent branches:** a few branches depend on org features. Related Accounts need *Contacts to Multiple Accounts* enabled.
 - **Configuration tests:** they use in-memory Custom Metadata rows.
 - **Controller tests:** they use the sample configuration shipped in `customMetadata/`.
-- **Project Board:** `ProjectBoardControllerTest` and `ProjectDocsControllerTest` run as a user with `Project_Board_User`, so user-mode access is tested too.
+- **Project Board:** `ProjectBoardControllerTest` and `ProjectDocsControllerTest` run as a user with `Project_Board_User`, so user-mode access is tested too. `ProjectBoardAccessTest` checks project visibility, roles and the sign-off workflow with three Standard User profile users.
 - **JavaScript:** `npm test` runs Jest on the shared field helpers and on `projectBoardUtils`.
 - **CI:** every push runs ESLint and Jest. To run the Apex tests too, add a repository secret `DEVHUB_SFDX_AUTH_URL` with the *Sfdx Auth Url* of a Dev Hub (`sf org display --verbose -o <dev hub>`). The job then creates a one-day scratch org, deploys, runs the tests and deletes the org. Use a Dev Hub dedicated to CI: the secret gives access to it.
 
@@ -161,10 +162,12 @@ force-app/main/default/
                      projectBoard* (Project Board app, views, documents, design system)
   customMetadata/    sample configuration (Contact, Campaign, Opportunity, price book rules)
   objects/           custom metadata types, record types, fields, External_Contract__c,
-                     PM_* (project, sprint, issue, comment, BRD, requirement, test case)
+                     PM_* (project, member, sprint, issue, comment, BRD, sign-off, requirement, test case)
   pages/             ProjectBrdExport, ProjectTestScriptExport, ProjectSprintReport (PDF / Word)
   flows/             Campaign_Set_Name (before-save)
-  permissionsets/    Record_Wizard_User, Opportunity_Wizard_User, Contract_Integration, Project_Board_User
+  triggers/          ProjectMemberTrigger, ProjectBrdTrigger (Project Board sharing)
+  notificationtypes/ Project_Board_Sign_Off
+  permissionsets/    Record_Wizard_User, Opportunity_Wizard_User, Contract_Integration, Project_Board_User, Project_Board_Admin
   staticresources/   MockContracts.json (fictitious data)
 scripts/apex/        seed-demo-data.apex, seed-project-board.apex
 docs/                architecture, configuration, presentation, project-board

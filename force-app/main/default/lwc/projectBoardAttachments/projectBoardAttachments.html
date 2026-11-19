@@ -5,15 +5,16 @@
             <span class="att-count">{count}</span>
         </div>
 
-        <div class="dropzone">
-            <lightning-file-upload
-                label={hint}
-                record-id={recordId}
-                accept={acceptedFormats}
-                multiple
-                onuploadfinished={handleUploadFinished}
-            ></lightning-file-upload>
-        </div>
+        <template lwc:if={canEdit}
+            ><div class="dropzone">
+                <lightning-file-upload
+                    label={hint}
+                    record-id={recordId}
+                    accept={acceptedFormats}
+                    multiple
+                    onuploadfinished={handleUploadFinished}
+                ></lightning-file-upload></div
+        ></template>
 
         <template lwc:if={hasFiles}>
             <div class="file-grid">
@@ -39,7 +40,13 @@
                                 <lightning-icon icon-name="utility:download" size="x-small"></lightning-icon>
                             </a>
                             <template lwc:if={f.canDelete}>
-                                <button class="icon-btn" title="Delete" data-id={f.documentId} onclick={handleDelete}>
+                                <button
+                                    class="icon-btn"
+                                    title="Delete"
+                                    aria-label="Delete file"
+                                    data-id={f.documentId}
+                                    onclick={handleDelete}
+                                >
                                     <lightning-icon icon-name="utility:delete" size="x-small"></lightning-icon>
                                 </button>
                             </template>

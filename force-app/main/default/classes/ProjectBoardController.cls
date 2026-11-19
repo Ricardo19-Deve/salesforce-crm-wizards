@@ -1,6 +1,12 @@
 /**
  * Controller for the Scrum-style project management app (projectBoardApp LWC).
- * Data model: PM_Project__c -> PM_Sprint__c / PM_Issue__c -> PM_Comment__c
+ * Data model: PM_Project__c -> PM_Sprint__c / PM_Issue__c -> PM_Comment__c,
+ * PM_Project__c -> PM_Project_Member__c (who can see the project and with which role).
+ *
+ * Where to configure: roles are Lead (manages members), Member (edits) and Viewer (read only). Projects are Private;
+ * ProjectBoardSharing turns memberships into shares. The Project_Board_Admin permission set sees every project.
+ * Gotchas: all queries and DML run in user mode, so record access always comes from membership. Only the issue
+ * assignee rule and the member rules are checked here; the platform enforces the rest.
  */
 public with sharing class ProjectBoardController {
 
@@ -32,6 +38,19 @@ public with sharing class ProjectBoardController {
         @AuraEnabled public Id currentUserId;
         @AuraEnabled public String currentUserName;
         @AuraEnabled public Map<Id, IssueStats> stats;
+        @AuraEnabled public List<MemberInfo> members;
+        @AuraEnabled public String myRole;
+        @AuraEnabled public Boolean canEdit;
+        @AuraEnabled public Boolean canManageMembers;
+    }
+
+    public class MemberInfo {
+        @AuraEnabled public Id id;
+        @AuraEnabled public Id userId;
+        @AuraEnabled public String name;
+        @AuraEnabled public String role;
+        @AuraEnabled public Boolean isOwner;
+        @AuraEnabled public Boolean hasPermission;
     }
 
     /** Per-issue counters shown as badges on board cards. */
@@ -84,7 +103,8 @@ public with sharing class ProjectBoardController {
             if (!Pattern.matches('[A-Z][A-Z0-9]{1,9}', key)) {
                 throw new ProjectBoardException('Project key must have 2-10 letters/digits and start with a letter.');
             }
-            if (![SELECT Id FROM PM_Project__c WHERE Key__c = :key LIMIT 1].isEmpty()) {
+            // Keys are unique across all projects, including the ones this user cannot see
+            if (ProjectBoardSharing.projectKeyExists(key)) {
                 throw new ProjectBoardException('A project with key ' + key + ' already exists.');
             }
             PM_Project__c project = new PM_Project__c(
@@ -95,6 +115,11 @@ public with sharing class ProjectBoardController {
                 Issue_Counter__c = 0
             );
             insert as user project;
+            insert as user new PM_Project_Member__c(
+                Project__c = project.Id,
+                User__c = UserInfo.getUserId(),
+                Role__c = ProjectBoardSharing.ROLE_LEAD
+            );
             insert as user new PM_Sprint__c(
                 Name = key + ' Sprint 1',
                 Project__c = project.Id,
@@ -132,6 +157,11 @@ public with sharing class ProjectBoardController {
                 'WITH USER_MODE ORDER BY Rank__c NULLS LAST, CreatedDate LIMIT 2000'
             );
             data.stats = buildStats(new Map<Id, PM_Issue__c>(data.issues).keySet());
+            data.members = members(projectId);
+            ProjectAccess access = accessFor(projectId);
+            data.myRole = access.role;
+            data.canEdit = access.canEdit;
+            data.canManageMembers = access.canManage;
             return data;
         } catch (Exception e) {
             throw auraError(e);
@@ -167,9 +197,16 @@ public with sharing class ProjectBoardController {
                 if (fields.containsKey('Status__c')) {
                     rec.Resolved_Date__c = rec.Status__c == STATUS_DONE ? System.now() : null;
                 }
+                if (rec.Assignee__c != null) {
+                    PM_Issue__c current = [SELECT Project__c FROM PM_Issue__c WHERE Id = :rec.Id WITH USER_MODE];
+                    assertAssignable(current.Project__c, rec.Assignee__c);
+                }
                 update as user rec;
             } else {
                 String projectId = asString(fields.get('Project__c'));
+                if (rec.Assignee__c != null && String.isNotBlank(projectId)) {
+                    assertAssignable(Id.valueOf(projectId), rec.Assignee__c);
+                }
                 insertIssue(rec, String.isBlank(projectId) ? null : Id.valueOf(projectId));
             }
             return queryIssue(rec.Id);
@@ -204,9 +241,13 @@ public with sharing class ProjectBoardController {
     @AuraEnabled
     public static void deleteIssue(Id issueId) {
         try {
-            // BRDs are linked by lookup (Project > Issue already uses two master-detail levels)
-            delete as user [SELECT Id FROM PM_BRD__c WHERE Issue__c = :issueId WITH USER_MODE];
+            // BRDs are linked by lookup and are owned by their author: delete the issue as the user first (this
+            // checks the user may change the project), then remove its BRD even when someone else wrote it.
+            List<PM_BRD__c> brds = [SELECT Id FROM PM_BRD__c WHERE Issue__c = :issueId WITH USER_MODE];
             delete as user new PM_Issue__c(Id = issueId);
+            if (!brds.isEmpty()) {
+                ProjectBoardSharing.deleteAsSystem(brds);
+            }
         } catch (Exception e) {
             throw auraError(e);
         }
@@ -404,6 +445,160 @@ public with sharing class ProjectBoardController {
             delete as user sprint;
         } catch (Exception e) {
             throw auraError(e);
+        }
+    }
+
+    // ---------------------------------------------------------------- Members
+
+    /** Adds a user to the project (Leads only). Lead and Member can edit, Viewer can only read. */
+    @AuraEnabled
+    public static MemberInfo addMember(Id projectId, Id userId, String role) {
+        try {
+            assertCanManage(projectId);
+            assertRole(role);
+            if (userId == null) {
+                throw new ProjectBoardException('Choose a user.');
+            }
+            List<User> users = [SELECT Id, IsActive FROM User WHERE Id = :userId];
+            if (users.isEmpty() || !users[0].IsActive) {
+                throw new ProjectBoardException('Only active users can be added to a project.');
+            }
+            if (![SELECT Id FROM PM_Project_Member__c WHERE Project__c = :projectId AND User__c = :userId WITH USER_MODE].isEmpty()) {
+                throw new ProjectBoardException('This user is already a member of the project.');
+            }
+            PM_Project_Member__c m = new PM_Project_Member__c(Project__c = projectId, User__c = userId, Role__c = role);
+            insert as user m;
+            for (MemberInfo info : members(projectId)) {
+                if (info.id == m.Id) {
+                    return info;
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            throw auraError(e);
+        }
+    }
+
+    @AuraEnabled
+    public static void updateMemberRole(Id memberId, String role) {
+        try {
+            assertRole(role);
+            PM_Project_Member__c m = [SELECT Id, Project__c, Role__c FROM PM_Project_Member__c WHERE Id = :memberId WITH USER_MODE];
+            assertCanManage(m.Project__c);
+            if (m.Role__c == ProjectBoardSharing.ROLE_LEAD && role != ProjectBoardSharing.ROLE_LEAD) {
+                assertAnotherLead(m.Project__c, m.Id);
+            }
+            update as user new PM_Project_Member__c(Id = m.Id, Role__c = role);
+        } catch (Exception e) {
+            throw auraError(e);
+        }
+    }
+
+    @AuraEnabled
+    public static void removeMember(Id memberId) {
+        try {
+            PM_Project_Member__c m = [SELECT Id, Project__c, Role__c FROM PM_Project_Member__c WHERE Id = :memberId WITH USER_MODE];
+            assertCanManage(m.Project__c);
+            if (m.Role__c == ProjectBoardSharing.ROLE_LEAD) {
+                assertAnotherLead(m.Project__c, m.Id);
+            }
+            delete as user m;
+        } catch (Exception e) {
+            throw auraError(e);
+        }
+    }
+
+    public class ProjectAccess {
+        public String role;
+        public Boolean canEdit = false;
+        public Boolean canManage = false;
+    }
+
+    /** Role and rights of the current user on a project (owner and admins count as Lead). */
+    public static ProjectAccess accessFor(Id projectId) {
+        ProjectAccess access = new ProjectAccess();
+        UserRecordAccess ura = [
+            SELECT RecordId, HasEditAccess, HasAllAccess FROM UserRecordAccess
+            WHERE UserId = :UserInfo.getUserId() AND RecordId = :projectId
+        ];
+        List<PM_Project_Member__c> mine = [
+            SELECT Role__c FROM PM_Project_Member__c
+            WHERE Project__c = :projectId AND User__c = :UserInfo.getUserId()
+            WITH USER_MODE LIMIT 1
+        ];
+        access.role = !mine.isEmpty() ? mine[0].Role__c : (ura.HasAllAccess ? ProjectBoardSharing.ROLE_LEAD : ProjectBoardSharing.ROLE_VIEWER);
+        access.canEdit = ura.HasEditAccess;
+        access.canManage = ura.HasAllAccess || access.role == ProjectBoardSharing.ROLE_LEAD;
+        return access;
+    }
+
+    private static List<MemberInfo> members(Id projectId) {
+        PM_Project__c project = [SELECT OwnerId FROM PM_Project__c WHERE Id = :projectId WITH USER_MODE];
+        List<PM_Project_Member__c> rows = [
+            SELECT Id, User__c, User__r.Name, Role__c
+            FROM PM_Project_Member__c
+            WHERE Project__c = :projectId
+            WITH USER_MODE
+            ORDER BY User__r.Name
+        ];
+        Set<Id> userIds = new Set<Id>();
+        for (PM_Project_Member__c m : rows) {
+            userIds.add(m.User__c);
+        }
+        // Flags members who were added but cannot open the app yet
+        Set<Id> withPermission = new Set<Id>();
+        for (PermissionSetAssignment psa : [
+            SELECT AssigneeId FROM PermissionSetAssignment
+            WHERE AssigneeId IN :userIds AND PermissionSet.Name IN ('Project_Board_User', 'Project_Board_Admin')
+        ]) {
+            withPermission.add(psa.AssigneeId);
+        }
+        List<MemberInfo> result = new List<MemberInfo>();
+        for (PM_Project_Member__c m : rows) {
+            MemberInfo info = new MemberInfo();
+            info.id = m.Id;
+            info.userId = m.User__c;
+            info.name = m.User__r == null ? null : m.User__r.Name;
+            info.role = m.Role__c;
+            info.isOwner = m.User__c == project.OwnerId;
+            info.hasPermission = withPermission.contains(m.User__c);
+            result.add(info);
+        }
+        return result;
+    }
+
+    private static void assertCanManage(Id projectId) {
+        if (!accessFor(projectId).canManage) {
+            throw new ProjectBoardException('Only project leads can manage members.');
+        }
+    }
+
+    private static void assertRole(String role) {
+        if (role != ProjectBoardSharing.ROLE_LEAD && role != ProjectBoardSharing.ROLE_MEMBER && role != ProjectBoardSharing.ROLE_VIEWER) {
+            throw new ProjectBoardException('Role must be Lead, Member or Viewer.');
+        }
+    }
+
+    private static void assertAnotherLead(Id projectId, Id memberId) {
+        Integer leads = [
+            SELECT COUNT() FROM PM_Project_Member__c
+            WHERE Project__c = :projectId AND Role__c = :ProjectBoardSharing.ROLE_LEAD AND Id != :memberId
+            WITH USER_MODE
+        ];
+        if (leads == 0) {
+            throw new ProjectBoardException('A project needs at least one lead.');
+        }
+    }
+
+    /** Issues can only be assigned to members who can edit the project (Lead or Member). */
+    private static void assertAssignable(Id projectId, Id userId) {
+        Integer editors = [
+            SELECT COUNT() FROM PM_Project_Member__c
+            WHERE Project__c = :projectId AND User__c = :userId AND Role__c != :ProjectBoardSharing.ROLE_VIEWER
+            WITH USER_MODE
+        ];
+        if (editors == 0) {
+            throw new ProjectBoardException('The assignee must be a project member with the Lead or Member role.');
         }
     }
 

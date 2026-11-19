@@ -24,6 +24,11 @@
             <button class="btn btn-link" onclick={clearFilters}>Clear filters</button>
         </template>
     </div>
+    <p id="backlog-kb-help" class="sr-only">
+        Use Up and Down to move between issues and Enter to open one. Press Space to pick up an issue, Up and Down to
+        choose its position or another sprint, Space to drop it, and Escape to cancel.
+    </p>
+    <div class="sr-only" role="status" aria-live="assertive">{announcement}</div>
 
     <div class={layoutClass}>
         <template lwc:if={showEpics}>
@@ -55,10 +60,12 @@
                 <template lwc:else>
                     <div class="epics-empty">Epics group related work. Click an epic to filter the backlog.</div>
                 </template>
-                <button class="create-inline" onclick={handleCreateEpic}>
-                    <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
-                    Create epic
-                </button>
+                <template lwc:if={canEdit}>
+                    <button class="create-inline" onclick={handleCreateEpic}>
+                        <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
+                        Create epic
+                    </button>
+                </template>
             </aside>
         </template>
 
@@ -86,12 +93,12 @@
                             <span class="pts pts-todo" title="To Do story points">{section.todoPts}</span>
                             <span class="pts pts-progress" title="In progress story points">{section.progressPts}</span>
                             <span class="pts pts-done" title="Done story points">{section.donePts}</span>
-                            <template lwc:if={section.isActive}>
+                            <template lwc:if={section.showComplete}>
                                 <button class="btn btn-sm" data-id={section.sprintId} onclick={handleCompleteSprint}>
                                     Complete sprint
                                 </button>
                             </template>
-                            <template lwc:if={section.isPlanned}>
+                            <template lwc:if={section.showPlannedActions}>
                                 <button
                                     class="btn btn-sm btn-primary"
                                     data-id={section.sprintId}
@@ -109,7 +116,7 @@
                                     <lightning-icon icon-name="utility:delete" size="xx-small"></lightning-icon>
                                 </button>
                             </template>
-                            <template lwc:if={section.isBacklog}>
+                            <template lwc:if={section.showCreateSprint}>
                                 <button class="btn btn-sm" onclick={handleCreateSprint}>Create sprint</button>
                             </template>
                         </div>
@@ -121,6 +128,8 @@
                     <template lwc:if={section.expanded}>
                         <div
                             class={section.bodyClass}
+                            role="group"
+                            aria-label={section.ariaLabel}
                             data-key={section.key}
                             ondragover={handleDragOver}
                             ondragleave={handleDragLeave}
@@ -134,10 +143,16 @@
                                     key={row.id}
                                     class={row.rowClass}
                                     data-id={row.id}
-                                    draggable="true"
+                                    role="button"
+                                    tabindex={row.tabIndex}
+                                    aria-label={row.ariaLabel}
+                                    aria-describedby="backlog-kb-help"
+                                    draggable={draggableValue}
                                     ondragstart={handleDragStart}
                                     ondragend={handleDragEnd}
                                     onclick={handleRowClick}
+                                    onkeydown={handleRowKeydown}
+                                    onfocus={handleRowFocus}
                                 >
                                     <span class={row.typeClass} title={row.type}>
                                         <lightning-icon
@@ -181,32 +196,34 @@
                             <div class={section.endClass}></div>
                         </div>
 
-                        <template lwc:if={section.quickOpen}>
-                            <div class="quick-create">
-                                <select class="quick-type" onchange={handleQuickType}>
-                                    <template for:each={typeOptions} for:item="opt">
-                                        <option key={opt.value} value={opt.value} selected={opt.selected}>
-                                            {opt.label}
-                                        </option>
-                                    </template>
-                                </select>
-                                <input
-                                    class="quick-input"
-                                    type="text"
-                                    maxlength="255"
-                                    placeholder="What needs to be done?"
-                                    oninput={handleQuickInput}
-                                    onkeydown={handleQuickKey}
-                                />
-                                <button class="btn btn-sm btn-primary" onclick={submitQuickCreate}>Create</button>
-                                <button class="btn btn-sm btn-subtle" onclick={cancelQuickCreate}>Cancel</button>
-                            </div>
-                        </template>
-                        <template lwc:else>
-                            <button class="create-inline" data-key={section.key} onclick={openQuickCreate}>
-                                <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
-                                Create issue
-                            </button>
+                        <template lwc:if={canEdit}>
+                            <template lwc:if={section.quickOpen}>
+                                <div class="quick-create">
+                                    <select class="quick-type" onchange={handleQuickType}>
+                                        <template for:each={typeOptions} for:item="opt">
+                                            <option key={opt.value} value={opt.value} selected={opt.selected}>
+                                                {opt.label}
+                                            </option>
+                                        </template>
+                                    </select>
+                                    <input
+                                        class="quick-input"
+                                        type="text"
+                                        maxlength="255"
+                                        placeholder="What needs to be done?"
+                                        oninput={handleQuickInput}
+                                        onkeydown={handleQuickKey}
+                                    />
+                                    <button class="btn btn-sm btn-primary" onclick={submitQuickCreate}>Create</button>
+                                    <button class="btn btn-sm btn-subtle" onclick={cancelQuickCreate}>Cancel</button>
+                                </div>
+                            </template>
+                            <template lwc:else>
+                                <button class="create-inline" data-key={section.key} onclick={openQuickCreate}>
+                                    <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
+                                    Create issue
+                                </button>
+                            </template>
                         </template>
                     </template>
                 </div>
