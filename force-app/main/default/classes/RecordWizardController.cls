@@ -119,11 +119,12 @@ public with sharing class RecordWizardController {
         return result;
     }
 
-    // leadIds = Leads to convert into the new Contact; relatedAccountIds = Accounts linked as Related Accounts.
+    // leadIds = Leads to convert into the new Contact; relatedAccountIds = Accounts linked as Related Accounts;
+    // identifyJson = the values searched in the Identify step, used to check that the Leads are genuine duplicates.
     @AuraEnabled
     public static SaveOutcome createRecord(
         String objectApiName, Id recordTypeId, String fieldsJson, Boolean allowDuplicates,
-        List<Id> leadIds, List<Id> relatedAccountIds
+        List<Id> leadIds, List<Id> relatedAccountIds, String identifyJson
     ) {
         Savepoint sp;
         try {
@@ -143,6 +144,7 @@ public with sharing class RecordWizardController {
                 return duplicateOutcome(result, objectDescribe);
             }
             if (record instanceof Contact) {
+                new ContactMatchService().verifyChosen(recordType, WizardFieldWriter.parse(identifyJson), null, leadIds);
                 new ContactMergeService().finishContact(record.Id, recordType, leadIds, relatedAccountIds, null, allowDuplicates == true);
             }
             SaveOutcome outcome = new SaveOutcome();
@@ -158,12 +160,14 @@ public with sharing class RecordWizardController {
     }
 
     @AuraEnabled
-    public static ContactMergeService.MergeData getMergeData(Id recordTypeId, List<Id> contactIds, List<Id> leadIds, String fieldsJson) {
+    public static ContactMergeService.MergeData getMergeData(
+        Id recordTypeId, List<Id> contactIds, List<Id> leadIds, String fieldsJson, String identifyJson
+    ) {
         try {
             requireAccess();
-            return new ContactMergeService().getMergeData(
-                contactRecordType(recordTypeId), contactIds, leadIds, WizardFieldWriter.parse(fieldsJson)
-            );
+            WizardConfig.RecordTypeOption recordType = contactRecordType(recordTypeId);
+            new ContactMatchService().verifyChosen(recordType, WizardFieldWriter.parse(identifyJson), contactIds, leadIds);
+            return new ContactMergeService().getMergeData(recordType, contactIds, leadIds, WizardFieldWriter.parse(fieldsJson));
         } catch (WizardException e) {
             throw auraError(e);
         }
@@ -171,12 +175,17 @@ public with sharing class RecordWizardController {
 
     @AuraEnabled
     public static Id mergeContacts(
-        Id recordTypeId, Id masterId, List<Id> mergeIds, String valuesJson, List<Id> leadIds, List<Id> relatedAccountIds
+        Id recordTypeId, Id masterId, List<Id> mergeIds, String valuesJson, List<Id> leadIds, List<Id> relatedAccountIds,
+        String identifyJson
     ) {
         try {
             requireAccess();
+            WizardConfig.RecordTypeOption recordType = contactRecordType(recordTypeId);
+            List<Id> contactIds = new List<Id>{ masterId };
+            if (mergeIds != null) contactIds.addAll(mergeIds);
+            new ContactMatchService().verifyChosen(recordType, WizardFieldWriter.parse(identifyJson), contactIds, leadIds);
             return new ContactMergeService().mergeContacts(
-                contactRecordType(recordTypeId), masterId, mergeIds, WizardFieldWriter.parse(valuesJson), leadIds, relatedAccountIds
+                recordType, masterId, mergeIds, WizardFieldWriter.parse(valuesJson), leadIds, relatedAccountIds
             );
         } catch (WizardException e) {
             throw auraError(e);

@@ -26,6 +26,7 @@
 - **Scoring vs filtering.** Only rules whose weight alone reaches the minimum score become SOQL filters, with one query per filter. Weaker rules such as first name only add points. Otherwise a common first name fills the row limit and hides the real matches.
 - **Encrypted fields.** With Shield Platform Encryption (deterministic), email, phone and name support only exact comparisons, with no `LIKE` or `ORDER BY`. The service therefore searches the usual capitalisations of each value. The same code works with or without encryption.
 - **Lead conversion across sales processes.** Each Lead record type can have a different set of converted statuses. The service tries the converted statuses in order until every Lead converts.
+- **Duplicates owned by others.** The Identify step searches in system mode, so it also finds Contacts and Leads the user cannot open. For those records it returns the name and which values matched, with a masked email and no Account or Company (`restricted`). Merge, the review step and Lead conversion re-check every Id on the server: it must be a record the user can open (`UserRecordAccess`) or one of the duplicates found again for the values typed in the Identify step (`identifyJson`). Contacts must also use a record type the wizard offers, and Related Accounts must be Accounts the user can open.
 - **Duplicate rules.**
   - **Alert rules:** the duplicates are returned to the UI as data, not as an exception. The user can then "Save anyway" (`DuplicateRuleHeader.allowSave`) or merge.
   - **Block rules:** they still stop the save.
@@ -48,9 +49,13 @@ Wire results are kept when the wizard resets for the same object. Wires do not p
 
 ```
 ContractSyncScheduler (daily) -> ContractSyncJob(page 1) -> ContractFeed.source().fetchUpdatedSince(watermark, page)
-                                         |-> upsert External_Contract__c on External_Id__c (Account by AccountNumber)
-                                         |-> more pages? enqueue page + 1 : save watermark = run start time
+                                         |-> upsert External_Contract__c on External_Id__c, item by item (Account by AccountNumber)
+                                         |-> more pages? enqueue page + 1
+                                         |-> page limit reached? watermark = 1 s before the newest saved change
+                                         |-> last page? watermark = run start time
 ```
 
-- **Watermark:** it moves only after the last page succeeds, so a failed run is retried by the next one and nothing is skipped.
+- **Order:** a source returns contracts oldest change first (`ContractFeed.Source`), so a run that stops at `MAX_PAGES` can save a checkpoint and the next run continues from it. Nothing is skipped.
+- **Watermark:** it stays where it was when a page fails as a whole, so the next run retries it.
+- **Bad items:** each contract is saved on its own (`allOrNone = false`) and text values are cut to the field length. A contract Salesforce rejects is counted in `Last_Sync_Error_Count__c` with its message in `Last_Sync_Errors__c`; it does not block the others and is read again when it changes at the source.
 - **Connecting a real system:** implement `ContractFeed.Source` (for example an HTTP adapter using a Named Credential, so no secret lives in code) and return it from `ContractFeed.source()`.

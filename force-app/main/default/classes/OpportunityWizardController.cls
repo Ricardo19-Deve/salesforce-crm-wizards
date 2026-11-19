@@ -47,6 +47,10 @@ public with sharing class OpportunityWizardController {
     @AuraEnabled(cacheable=true)
     public static ProductCatalog getCatalog(Id accountId) {
         try {
+            // Price book entries are read in system mode, so the wizard permission is required here too.
+            if (!hasWizardAccess()) {
+                throw new WizardException('You do not have access to this wizard. Ask your administrator for the Opportunity Wizard User permission set.');
+            }
             ProductCatalog catalog = new ProductCatalog();
             catalog.priceBook = PriceBookResolver.forAccount(accountId);
             catalog.products = new List<ProductOption>();

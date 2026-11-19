@@ -250,7 +250,12 @@
                                         data-id={cand.recordId} data-type={cand.recordType} onchange={handleCandidateToggle}></lightning-input>
                                     <lightning-icon icon-name={cand.icon} size="small" alternative-text={cand.recordType}></lightning-icon>
                                     <div class="candidate-main">
-                                        <a href={cand.url} target="_blank"><strong>{cand.name}</strong></a>
+                                        <template if:true={cand.url}>
+                                            <a href={cand.url} target="_blank"><strong>{cand.name}</strong></a>
+                                        </template>
+                                        <template if:false={cand.url}>
+                                            <strong>{cand.name}</strong>
+                                        </template>
                                         <small>{cand.recordType} · {cand.detail}</small>
                                         <small class="match-yes">Matches: {cand.matchedText}</small>
                                         <template if:true={cand.notMatchedText}>

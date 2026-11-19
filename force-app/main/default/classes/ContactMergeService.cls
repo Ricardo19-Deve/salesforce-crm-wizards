@@ -204,6 +204,9 @@ public with sharing class ContactMergeService {
         accounts.remove(null);
         Set<Id> toValidate = new Set<Id>(accounts);
         if (trustedAccountIds != null) toValidate.removeAll(trustedAccountIds);
+        if (!toValidate.isEmpty() && !ContactMatchService.readableIds(toValidate).containsAll(toValidate)) {
+            throw new WizardException('One of the related Accounts is not available to you.');
+        }
         Set<Id> allowed = ContactMatchService.allowedAccountRecordTypes(recordType);
         if (!allowed.isEmpty() && !toValidate.isEmpty()) {
             Integer valid = dml.query('SELECT Id FROM Account WHERE Id IN :ids AND RecordTypeId IN :allowed',

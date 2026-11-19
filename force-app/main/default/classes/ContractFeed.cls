@@ -9,6 +9,10 @@
 public with sharing class ContractFeed {
     @TestVisible private static Source sourceOverride;
 
+    /**
+     * Returns the contracts changed strictly after updatedSince, oldest change first (ascending updatedAt, ties in
+     * a stable order). ContractSyncJob relies on that order to resume after its page limit without skipping data.
+     */
     public interface Source {
         ResultPage fetchUpdatedSince(Datetime updatedSince, Integer page, Integer pageSize);
     }

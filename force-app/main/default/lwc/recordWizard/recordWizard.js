@@ -288,11 +288,18 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         this.searchTimer = window.setTimeout(() => this.runSearch(), 500);
     }
 
-    async runSearch() {
+    // The values searched in the Identify step. The server uses them again to check that the records picked for
+    // merge or conversion are genuine duplicates.
+    identifyPayload() {
         const inputs = {};
-        Object.entries(this.identifyValues).forEach(([key, value]) => {
+        Object.entries(this.identifyValues || {}).forEach(([key, value]) => {
             if (value !== undefined && value !== null && String(value).trim() !== '') inputs[key] = String(value).trim();
         });
+        return inputs;
+    }
+
+    async runSearch() {
+        const inputs = this.identifyPayload();
         if (!inputs.Email && !inputs.LastName) {
             this.matchResult = undefined;
             this.selectedContactIds = [];
@@ -331,7 +338,8 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
                 disabled: isContact && !selected && this.selectedContactIds.length >= MAX_MERGE,
                 icon: isContact ? 'standard:contact' : 'standard:lead',
                 action: isContact ? 'Merge' : 'Convert',
-                url: `/lightning/r/${c.recordType}/${c.recordId}/view`,
+                // Records the user cannot open: no link, details hidden by the server.
+                url: c.restricted ? undefined : `/lightning/r/${c.recordType}/${c.recordId}/view`,
                 matchedText: (c.matched || []).join(', '),
                 notMatchedText: (c.notMatched || []).join(', '),
                 rowClass: selected ? 'candidate candidate-selected' : 'candidate'
@@ -411,7 +419,8 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
                 recordTypeId: this.selectedRecordType.recordTypeId,
                 contactIds: this.selectedContactIds,
                 leadIds: this.selectedLeadIds,
-                fieldsJson: JSON.stringify(this.formPayload())
+                fieldsJson: JSON.stringify(this.formPayload()),
+                identifyJson: JSON.stringify(this.identifyPayload())
             });
             // Default: the value typed in the wizard; else the Contact kept; else the first record with a value.
             const choices = {};
@@ -933,7 +942,8 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
                     mergeIds: this.selectedContactIds,
                     valuesJson: JSON.stringify(fields),
                     leadIds: this.selectedLeadIds,
-                    relatedAccountIds
+                    relatedAccountIds,
+                    identifyJson: JSON.stringify(this.identifyPayload())
                 });
                 this.wasMerged = true;
             } else {
@@ -943,7 +953,8 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
                     fieldsJson: JSON.stringify(fields),
                     allowDuplicates,
                     leadIds: this.selectedLeadIds,
-                    relatedAccountIds
+                    relatedAccountIds,
+                    identifyJson: JSON.stringify(this.identifyPayload())
                 });
                 if (outcome.duplicates) {
                     this.duplicateOutcome = outcome;

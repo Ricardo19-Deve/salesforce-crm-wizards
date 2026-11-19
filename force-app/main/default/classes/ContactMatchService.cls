@@ -9,6 +9,11 @@
  *    filters, one query per filter. The others (First Name, Mobile, Account) only add points: as a filter a
  *    common first name or a large Account would fill the row limit and hide the real matches.
  *
+ * Privacy: duplicates are searched in system mode so records owned by other users are found too. For records the
+ * user cannot open, the results keep the name and which values matched, but the email is masked and the Account /
+ * Company are hidden (restricted = true). verifyChosen() makes sure merge and conversion only act on records the user
+ * can open or on genuine duplicates of what was typed in the Identify step, never on arbitrary Ids from the browser.
+ *
  * Encrypted fields: with Shield Platform Encryption (deterministic, case-sensitive) email, phone and name fields
  * only support exact comparisons and cannot be used in ORDER BY or LIKE, so the usual capitalisations of every
  * value are searched explicitly (variants()). Without encryption this is simply a harmless IN list.
@@ -29,6 +34,7 @@ public with sharing class ContactMatchService {
         @AuraEnabled public String accountName;
         @AuraEnabled public String company;      // Lead Company (free text), used for Account suggestions
         @AuraEnabled public String email;
+        @AuraEnabled public Boolean restricted;  // the user cannot open this record: details are hidden
     }
 
     public class MatchResult {
@@ -44,6 +50,9 @@ public with sharing class ContactMatchService {
     }
 
     private final WizardSystemDml dml = new WizardSystemDml();
+
+    // Tests cannot easily create records the running user cannot see: they list them here instead.
+    @TestVisible private static Set<Id> unreadableForTest = new Set<Id>();
 
     public MatchResult findMatches(WizardConfig.RecordTypeOption recordType, Map<String, Object> inputs) {
         Schema.DescribeSObjectResult contactDescribe = Contact.SObjectType.getDescribe();
@@ -151,7 +160,93 @@ public with sharing class ContactMatchService {
         for (Integer a = 0; a < Math.min(kept.size(), MAX_CANDIDATES); a++) {
             result.candidates.add(kept[a]);
         }
+        hideDetailsOfRestrictedRecords(result.candidates);
         return result;
+    }
+
+    /**
+     * Merge, review and Lead conversion receive Ids from the browser. Each one must be a record the user can open,
+     * or one of the duplicates findMatches returns for the values typed in the Identify step. Contacts must also use
+     * a record type the wizard offers.
+     */
+    public void verifyChosen(
+        WizardConfig.RecordTypeOption recordType, Map<String, Object> identifyInputs, List<Id> contactIds, List<Id> leadIds
+    ) {
+        Set<Id> chosen = new Set<Id>();
+        if (contactIds != null) chosen.addAll(contactIds);
+        if (leadIds != null) chosen.addAll(leadIds);
+        chosen.remove(null);
+        if (chosen.isEmpty()) {
+            return;
+        }
+        Set<Id> pending = new Set<Id>(chosen);
+        pending.removeAll(readableIds(chosen));
+        if (!pending.isEmpty() && identifyInputs != null && !identifyInputs.isEmpty()) {
+            for (MatchCandidate candidate : findMatches(recordType, identifyInputs).candidates) {
+                pending.remove(candidate.recordId);
+            }
+        }
+        if (!pending.isEmpty()) {
+            throw new WizardException('One of the selected records is not a duplicate of the person you entered. Search again and pick it from the results.');
+        }
+        if (contactIds != null && !contactIds.isEmpty()) {
+            Set<Id> recordTypeIds = new Set<Id>();
+            for (WizardConfig.RecordTypeOption option : WizardConfig.availableRecordTypes(Contact.SObjectType.getDescribe())) {
+                recordTypeIds.add(option.recordTypeId);
+            }
+            Set<Id> contactSet = new Set<Id>(contactIds);
+            contactSet.remove(null);
+            Integer eligible = dml.query('SELECT Id FROM Contact WHERE Id IN :ids AND RecordTypeId IN :recordTypeIds',
+                new Map<String, Object>{ 'ids' => contactSet, 'recordTypeIds' => recordTypeIds }).size();
+            if (eligible != contactSet.size()) {
+                throw new WizardException('One of the selected Contacts is not available in this wizard.');
+            }
+        }
+    }
+
+    /** Records the running user can open (sharing and object access), in batches of 200 as UserRecordAccess allows. */
+    public static Set<Id> readableIds(Set<Id> ids) {
+        Set<Id> readable = new Set<Id>();
+        List<Id> all = new List<Id>(ids);
+        for (Integer start = 0; start < all.size(); start += 200) {
+            List<Id> chunk = new List<Id>();
+            for (Integer i = start; i < Math.min(start + 200, all.size()); i++) chunk.add(all[i]);
+            for (UserRecordAccess access : [
+                SELECT RecordId, HasReadAccess FROM UserRecordAccess
+                WHERE UserId = :UserInfo.getUserId() AND RecordId IN :chunk
+            ]) {
+                if (access.HasReadAccess && !unreadableForTest.contains(access.RecordId)) readable.add(access.RecordId);
+            }
+        }
+        return readable;
+    }
+
+    private static void hideDetailsOfRestrictedRecords(List<MatchCandidate> candidates) {
+        Set<Id> ids = new Set<Id>();
+        for (MatchCandidate candidate : candidates) ids.add(candidate.recordId);
+        Set<Id> readable = ids.isEmpty() ? new Set<Id>() : readableIds(ids);
+        for (MatchCandidate candidate : candidates) {
+            candidate.restricted = !readable.contains(candidate.recordId);
+            if (candidate.restricted) {
+                candidate.email = maskEmail(candidate.email);
+                candidate.accountName = null;
+                candidate.company = null;
+                candidate.detail = joinParts(new List<String>{ candidate.email, 'details hidden (owned by someone else)' });
+            }
+        }
+    }
+
+    /** "ana.silva@northwind.com" -> "a•••@n•••.com": enough to recognise a duplicate, not to contact the person. */
+    @TestVisible
+    private static String maskEmail(String email) {
+        if (String.isBlank(email) || !email.contains('@')) {
+            return null;
+        }
+        String local = email.substringBefore('@');
+        String domain = email.substringAfter('@');
+        String host = domain.contains('.') ? domain.substringBeforeLast('.') : domain;
+        String suffix = domain.contains('.') ? '.' + domain.substringAfterLast('.') : '';
+        return local.left(1) + '•••@' + host.left(1) + '•••' + suffix;
     }
 
     // Accounts whose name contains a Lead Company (exact names first), restricted to the record types the
@@ -183,8 +278,14 @@ public with sharing class ContactMatchService {
                 if (suggestion.exact && !suggestions.isEmpty()) suggestions.add(0, suggestion); else suggestions.add(suggestion);
             }
         }
+        // Suggestions are shown by name, so only Accounts the user can open are offered.
+        Set<Id> suggested = new Set<Id>();
+        for (AccountSuggestion suggestion : suggestions) suggested.add(suggestion.accountId);
+        Set<Id> readable = suggested.isEmpty() ? new Set<Id>() : readableIds(suggested);
         List<AccountSuggestion> top = new List<AccountSuggestion>();
-        for (Integer i = 0; i < Math.min(5, suggestions.size()); i++) top.add(suggestions[i]);
+        for (AccountSuggestion suggestion : suggestions) {
+            if (top.size() < 5 && readable.contains(suggestion.accountId)) top.add(suggestion);
+        }
         return top;
     }
 

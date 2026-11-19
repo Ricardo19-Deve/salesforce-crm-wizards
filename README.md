@@ -144,12 +144,13 @@ The configuration guide is in [docs/configuration.md](docs/configuration.md). In
 
 ## Tests
 
-- **Apex:** 45 tests with `sf apex run test -l RunLocalTests -c`. Coverage of the project classes is 70–100% (about 90% overall).
+- **Apex:** 46 tests with `sf apex run test -l RunLocalTests -c`, all passing in a fresh scratch org on 19 Nov 2026 with 90% org-wide coverage (project classes 70–100%). The CI runs them too when a Dev Hub is connected (see below).
 - **Org-dependent branches:** a few branches depend on org features. Related Accounts need *Contacts to Multiple Accounts* enabled.
 - **Configuration tests:** they use in-memory Custom Metadata rows.
 - **Controller tests:** they use the sample configuration shipped in `customMetadata/`.
 - **Project Board:** `ProjectBoardControllerTest` and `ProjectDocsControllerTest` run as a user with `Project_Board_User`, so user-mode access is tested too.
 - **JavaScript:** `npm test` runs Jest on the shared field helpers and on `projectBoardUtils`.
+- **CI:** every push runs ESLint and Jest. To run the Apex tests too, add a repository secret `DEVHUB_SFDX_AUTH_URL` with the *Sfdx Auth Url* of a Dev Hub (`sf org display --verbose -o <dev hub>`). The job then creates a one-day scratch org, deploys, runs the tests and deletes the org. Use a Dev Hub dedicated to CI: the secret gives access to it.
 
 ## Project structure
 
