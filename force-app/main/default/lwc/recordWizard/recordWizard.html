@@ -416,10 +416,14 @@
                     <section key={section.key} class="card">
                         <h2 class="section-title">{section.name}</h2>
                         <div class="summary-grid">
-                            <template for:each={section.rows} for:item="row">
-                                <div key={row.key} class="summary-row">
-                                    <span class="summary-label">{row.label}</span>
-                                    <span class={row.valueClass}>{row.value}</span>
+                            <template for:each={section.columns} for:item="column">
+                                <div key={column.key} class="summary-column">
+                                    <template for:each={column.rows} for:item="row">
+                                        <div key={row.key} class="summary-row">
+                                            <span class="summary-label">{row.label}</span>
+                                            <span class={row.valueClass}>{row.value}</span>
+                                        </div>
+                                    </template>
                                 </div>
                             </template>
                         </div>

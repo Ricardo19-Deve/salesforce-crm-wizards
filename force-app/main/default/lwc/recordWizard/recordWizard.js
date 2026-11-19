@@ -919,10 +919,17 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         });
         return [...groups.values()]
             .sort((x, y) => x.page - y.page || x.order - y.order || x.name.localeCompare(y.name))
-            .map((group) => ({
-                ...group,
-                rows: group.rows.sort((x, y) => x.columnNumber - y.columnNumber || x.sortOrder - y.sortOrder)
-            }));
+            .map((group) => {
+                // Same two columns as the form: left column fields under each other, right column next to them.
+                const sorted = group.rows.sort((x, y) => x.sortOrder - y.sortOrder);
+                return {
+                    ...group,
+                    columns: [
+                        { key: 'left', rows: sorted.filter((r) => r.columnNumber !== 2) },
+                        { key: 'right', rows: sorted.filter((r) => r.columnNumber === 2) }
+                    ]
+                };
+            });
     }
 
     get summaryRelated() {
