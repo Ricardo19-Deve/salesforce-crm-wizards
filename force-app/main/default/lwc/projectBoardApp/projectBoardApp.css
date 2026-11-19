@@ -116,6 +116,14 @@
     --slds-c-input-radius-border: 12px;
     --slds-c-input-shadow-focus: 0 0 0 4px var(--jx-accent-ring);
     --slds-g-color-neutral-base-100: var(--jx-option-bg);
+    /* Selected value of a record picker (read-only input + inset ring), in Lightning and in LWR sites */
+    --slds-g-color-neutral-base-10: var(--jx-text);
+    --slds-g-color-border-base-1: var(--jx-glass-border);
+    --slds-g-color-surface-container-1: var(--jx-option-bg);
+    --slds-g-color-on-surface-2: var(--jx-text);
+    --dxp-g-root: var(--jx-option-bg);
+    --dxp-g-root-contrast: var(--jx-text);
+    --dxp-g-neutral: var(--jx-glass-border);
 }
 
 /* ================================================================ Root & background */

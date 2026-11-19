@@ -330,6 +330,10 @@
     gap: 8px;
     min-height: 38px;
 }
+.approver-select {
+    flex: 1;
+    min-width: 200px;
+}
 .approver-name {
     font-weight: 600;
 }

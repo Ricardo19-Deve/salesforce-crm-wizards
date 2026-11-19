@@ -258,16 +258,13 @@
                             <span class="signoff-role">{s.Role__c}</span>
                             <div class="signoff-approver">
                                 <template lwc:if={s.showPicker}>
-                                    <lightning-record-picker
-                                        object-api-name="User"
+                                    <c-project-board-select
+                                        class="approver-select"
                                         label={s.Role__c}
-                                        variant="label-hidden"
-                                        placeholder="Choose an approver…"
-                                        value={s.Approver__c}
-                                        filter={approverFilter}
                                         data-id={s.Id}
                                         onchange={handleApprover}
-                                    ></lightning-record-picker>
+                                        options={s.approverOptions}
+                                    ></c-project-board-select>
                                 </template>
                                 <template lwc:else>
                                     <template lwc:if={s.hasApprover}>
@@ -377,16 +374,13 @@
                             <span class="signoff-role">{s.Role__c}</span>
                             <div class="signoff-approver">
                                 <template lwc:if={s.showPicker}>
-                                    <lightning-record-picker
-                                        object-api-name="User"
+                                    <c-project-board-select
+                                        class="approver-select"
                                         label={s.Role__c}
-                                        variant="label-hidden"
-                                        placeholder="Choose an approver…"
-                                        value={s.Approver__c}
-                                        filter={approverFilter}
                                         data-id={s.Id}
                                         onchange={handleApprover}
-                                    ></lightning-record-picker>
+                                        options={s.approverOptions}
+                                    ></c-project-board-select>
                                 </template>
                                 <template lwc:else>
                                     <template lwc:if={s.hasApprover}>

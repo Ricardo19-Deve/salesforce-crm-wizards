@@ -100,17 +100,14 @@
                             </div>
                             <div>
                                 <label class="field-label">Business Req #</label>
-                                <select
+                                <c-project-board-select
                                     disabled={readOnly}
-                                    class="field-select"
                                     data-id={tc.Id}
                                     data-field="Requirement__c"
                                     onchange={handleField}
-                                >
-                                    <template for:each={tc.reqOptions} for:item="o">
-                                        <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
-                                    </template>
-                                </select>
+                                    label="Requirement"
+                                    options={tc.reqOptions}
+                                ></c-project-board-select>
                             </div>
                             <div class="span-3 two-col">
                                 <div>

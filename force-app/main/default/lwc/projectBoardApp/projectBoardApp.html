@@ -237,7 +237,7 @@
         <template lwc:if={createOpen}>
             <c-project-board-issue-detail
                 mode="create"
-                assignable-user-ids={assignableUserIds}
+                assignable-users={assignableUsers}
                 defaults={createDefaults}
                 issues={issues}
                 sprints={sprints}
@@ -251,7 +251,7 @@
             <c-project-board-issue-detail
                 issue-id={selectedIssueId}
                 read-only={readOnly}
-                assignable-user-ids={assignableUserIds}
+                assignable-users={assignableUsers}
                 issues={issues}
                 sprints={sprints}
                 project={project}
@@ -304,19 +304,14 @@
                                         >
                                     </div>
                                     <template lwc:if={canManageMembers}>
-                                        <select
-                                            class="field-select role-select"
-                                            aria-label={m.roleLabel}
+                                        <c-project-board-select
+                                            class="role-select"
                                             data-id={m.id}
                                             disabled={m.locked}
                                             onchange={handleRoleChange}
-                                        >
-                                            <template for:each={m.roleOptions} for:item="o">
-                                                <option key={o.value} value={o.value} selected={o.selected}>
-                                                    {o.label}
-                                                </option>
-                                            </template>
-                                        </select>
+                                            label={m.roleLabel}
+                                            options={m.roleOptions}
+                                        ></c-project-board-select>
                                         <button
                                             class="icon-btn"
                                             title="Remove"
@@ -345,15 +340,12 @@
                                     filter={newMemberFilter}
                                     onchange={handleNewMember}
                                 ></lightning-record-picker>
-                                <select
-                                    class="field-select role-select"
-                                    aria-label="Role of the new member"
+                                <c-project-board-select
+                                    class="role-select"
                                     onchange={handleNewMemberRole}
-                                >
-                                    <template for:each={newRoleOptions} for:item="o">
-                                        <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
-                                    </template>
-                                </select>
+                                    label="Role of the new member"
+                                    options={newRoleOptions}
+                                ></c-project-board-select>
                                 <button class="btn btn-primary" disabled={addMemberDisabled} onclick={handleAddMember}>
                                     Add
                                 </button>
@@ -474,11 +466,12 @@
                             </div>
                             <div class="full">
                                 <label class="field-label">Duration</label>
-                                <select class="field-select" data-field="duration" onchange={handleSprintDialogChange}>
-                                    <template for:each={durationOptions} for:item="o">
-                                        <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
-                                    </template>
-                                </select>
+                                <c-project-board-select
+                                    data-field="duration"
+                                    onchange={handleSprintDialogChange}
+                                    label="Sprint duration"
+                                    options={durationOptions}
+                                ></c-project-board-select>
                             </div>
                             <div>
                                 <label class="field-label">Start date <span class="req">*</span></label>
@@ -556,11 +549,11 @@
                         </div>
                         <template lwc:if={completeDialog.hasOpen}>
                             <label class="field-label">Move open issues to</label>
-                            <select class="field-select" onchange={handleCompleteTarget}>
-                                <template for:each={completeTargetOptions} for:item="o">
-                                    <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
-                                </template>
-                            </select>
+                            <c-project-board-select
+                                onchange={handleCompleteTarget}
+                                label="Move open issues to"
+                                options={completeTargetOptions}
+                            ></c-project-board-select>
                         </template>
                     </div>
                     <div class="modal-foot">

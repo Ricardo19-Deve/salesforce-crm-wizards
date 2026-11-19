@@ -199,13 +199,13 @@
                         <template lwc:if={canEdit}>
                             <template lwc:if={section.quickOpen}>
                                 <div class="quick-create">
-                                    <select class="quick-type" onchange={handleQuickType}>
-                                        <template for:each={typeOptions} for:item="opt">
-                                            <option key={opt.value} value={opt.value} selected={opt.selected}>
-                                                {opt.label}
-                                            </option>
-                                        </template>
-                                    </select>
+                                    <c-project-board-select
+                                        class="quick-type"
+                                        variant="compact"
+                                        onchange={handleQuickType}
+                                        label="Issue type"
+                                        options={typeOptions}
+                                    ></c-project-board-select>
                                     <input
                                         class="quick-input"
                                         type="text"

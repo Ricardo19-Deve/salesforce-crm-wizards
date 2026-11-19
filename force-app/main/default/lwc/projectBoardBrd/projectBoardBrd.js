@@ -198,14 +198,19 @@ export default class ProjectBoardBrd extends LightningElement {
             .filter((s) => s);
     }
 
-    get approverFilter() {
-        const criteria = [{ fieldPath: 'IsActive', operator: 'eq', value: true }];
-        const ids = (this.view && this.view.memberUserIds) || [];
-        if (ids.length) criteria.push({ fieldPath: 'Id', operator: 'in', value: ids });
-        return {
-            criteria,
-            filterLogic: criteria.map((c, i) => i + 1).join(' AND ')
-        };
+    /** Project members, plus the current approver if they have left the project. */
+    approverOptions(currentId, currentName) {
+        const members = (this.view && this.view.members) || [];
+        const options = [{ value: '', label: 'Choose an approver…' }].concat(
+            members.map((m) => ({ value: m.id, label: m.name }))
+        );
+        if (currentId && !members.some((m) => m.id === currentId)) {
+            options.push({ value: currentId, label: currentName || 'Former member' });
+        }
+        return options.map((o) => ({
+            ...o,
+            selected: o.value === (currentId || '')
+        }));
     }
 
     get brdSignOffRows() {
@@ -234,6 +239,7 @@ export default class ProjectBoardBrd extends LightningElement {
                     pillClass: SIGN_PILL[s.Status__c] || SIGN_PILL.Pending,
                     decidedAt: toTime(s.Decision_Date__c),
                     showPicker: this.editable && !notRequired,
+                    approverOptions: this.approverOptions(s.Approver__c, approverName),
                     isMine,
                     rowClass: 'signoff-row' + (isMine ? ' mine' : ''),
                     commentLabel: `Comment for ${s.Role__c}`
@@ -344,7 +350,7 @@ export default class ProjectBoardBrd extends LightningElement {
 
     async handleApprover(event) {
         const id = event.target.dataset.id;
-        const approverId = event.detail.recordId || null;
+        const approverId = event.detail.value || null;
         await this.persist(async () => {
             await assignSignOff({ signOffId: id, approverId, notRequired: false });
             await this.load();

@@ -279,15 +279,9 @@
     box-shadow: 0 0 0 4px var(--jx-accent-ring);
 }
 .quick-type {
+    flex: none;
+    width: 110px;
     height: 30px;
-    padding: 0 8px;
-    border: 1px solid var(--jx-glass-border);
-    border-radius: 10px;
-    background: var(--jx-field);
-    color: var(--jx-text);
-}
-.quick-type option {
-    background: var(--jx-option-bg);
 }
 .quick-input {
     flex: 1;

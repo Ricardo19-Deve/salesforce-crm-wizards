@@ -24,7 +24,7 @@ Three rules hold everywhere:
 | **Test scripts** | UAT test cases with steps (action / expected / actual), Pass / Fail / Blocked / Not Run, tester and date captured automatically, evidence files. **Generate from BRD** creates one test case per acceptance criterion. |
 | **Reports** | Velocity chart (committed vs delivered points) and one card per sprint with completion, points, bugs fixed, carry-over and test pass rate. |
 | **Exports** | BRD, test scripts and sprint report as **PDF** (Visualforce `renderAs="pdf"`) or **Word** (`application/msword`). The BRD export prints each sign-off decision with approver, date and comment. |
-| **Accessibility** | Roving tab stop on the board and the backlog. **Space** picks a card up, the **arrow keys** carry it, **Space** drops it and **Escape** cancels. **Enter** opens the issue. Moves are announced in an `aria-live` region, dialogs keep the focus inside, and the focus goes back to the card when a dialog closes. |
+| **Accessibility** | Roving tab stop on the board and the backlog. **Space** picks a card up, the **arrow keys** carry it, **Space** drops it and **Escape** cancels. **Enter** opens the issue. Moves are announced in an `aria-live` region, dialogs keep the focus inside, and the focus goes back to the card when a dialog closes. Picklists are listboxes in the same design (arrows, Home / End, first letter, Enter, Escape) instead of the browser's native list. |
 
 ## Screenshots
 
@@ -38,6 +38,7 @@ Captured in a Developer Edition org with `scripts/apex/seed-project-board.apex` 
 | ![Reports](images/15-project-reports.png) Reports: velocity (committed vs delivered) and sprint cards | ![Sprint report PDF](images/16-project-sprint-report-pdf.png) Sprint report exported to PDF |
 | ![BRD PDF](images/17-project-brd-pdf.png) BRD exported to PDF with the recorded sign-off decisions (also available as Word) | ![Sign-off](images/18-project-sign-off.png) Sign-off: one approved with a comment, one waiting for a decision, one not required |
 | ![Members](images/19-project-members.png) Project members and their roles | ![Keyboard move](images/20-project-keyboard-move.png) Keyboard move: the card is lifted with Space and the target column is highlighted |
+| ![Picklist](images/21-project-picklist.png) Picklists follow the design in both themes; the assignee list only offers project members | |
 
 ## Data model
 
@@ -90,7 +91,8 @@ Field updates sent by the browser go through a whitelist per object, and values 
 | --- | --- |
 | `projectBoardApp` | Shell: sidebar, top bar, theme, routing, project / sprint dialogs. Defines the design tokens. |
 | `projectBoardKanban`, `projectBoardBacklog`, `projectBoardIssueList`, `projectBoardReports` | The four views. The board and the backlog implement the keyboard moves. |
-| `projectBoardIssueDetail` | Create form and issue modal with tabs. Read-only for Viewers; the assignee picker only offers Leads and Members. |
+| `projectBoardIssueDetail` | Create form and issue modal with tabs. Read-only for Viewers; the assignee list only offers Leads and Members. |
+| `projectBoardSelect` | Picklist in the glass design, used instead of the native `<select>` (whose open list is drawn by the operating system). Keyboard listbox; fires `change` from the host, so handlers read `event.target.value`. |
 | `projectBoardBrd`, `projectBoardTestScripts`, `projectBoardAttachments` | Documentation tabs. `projectBoardBrd` also runs the sign-off workflow. |
 | `projectBoardUtils` | Pure helpers (view model, ranks, dates, export / file URLs), covered by Jest. |
 | `projectBoardStyles` | CSS-only module: the shared glass design system. |
@@ -145,4 +147,4 @@ In the portal, exports open from the site's Visualforce path (`/<prefix>vforcesi
 
 - **Apex:** `ProjectBoardControllerTest` and `ProjectDocsControllerTest` cover the lifecycle (projects, issues, moves, sprints, comments, BRD, test cases, files, the three exports) and the validation errors. They run as a new user with the permission set, so user-mode access is tested too.
 - **Access:** `ProjectBoardAccessTest` runs as three Standard User profile users (a Lead, a Member and an outsider). It checks that outsiders do not see the project, that roles limit what each user can do, the last-Lead rule, and the whole sign-off flow (lock, decision by the named approver only, comment on a request for changes, reopen to version 1.1).
-- **Jest:** `projectBoardUtils` (ranks, view model, URLs, helpers).
+- **Jest:** `projectBoardUtils` (ranks, view model, URLs, helpers) and `projectBoardSelect` (keyboard, change event, Escape, type-ahead).

@@ -284,41 +284,9 @@ lightning-input-rich-text {
 
 /* ---------- Side panel */
 .status-select {
-    height: 38px;
+    display: inline-block;
+    min-width: 150px;
     margin-bottom: 16px;
-    padding: 0 16px;
-    border: none;
-    border-radius: 999px;
-    font-weight: 700;
-    cursor: pointer;
-    outline: none;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.3),
-        0 6px 16px rgba(15, 23, 60, 0.15);
-    transition: transform 0.25s var(--jx-spring);
-}
-.status-select:hover {
-    transform: translateY(-1px);
-}
-.status-todo {
-    background: linear-gradient(135deg, #94a3b8, #64748b);
-    color: #fff;
-}
-.status-progress {
-    background: linear-gradient(135deg, var(--jx-accent), #3b82f6);
-    color: #fff;
-}
-.status-review {
-    background: linear-gradient(135deg, #a78bfa, #7c3aed);
-    color: #fff;
-}
-.status-done {
-    background: linear-gradient(135deg, #34d399, #16a34a);
-    color: #fff;
-}
-.status-select option {
-    background: var(--jx-option-bg);
-    color: var(--jx-text);
 }
 .details-box {
     border: 1px solid var(--jx-glass-border);
@@ -431,9 +399,7 @@ lightning-input-rich-text {
     overflow: hidden;
     opacity: 0;
 }
-.field-select:disabled,
-.field-input:disabled,
-.status-select:disabled {
+.field-input:disabled {
     cursor: default;
     opacity: 0.75;
 }

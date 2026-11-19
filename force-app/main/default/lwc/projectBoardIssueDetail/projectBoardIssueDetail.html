@@ -36,20 +36,22 @@
                                         variant="inverse"
                                     ></lightning-icon>
                                 </span>
-                                <select class="field-select" data-field="Type__c" onchange={handleFormChange}>
-                                    <template for:each={formTypeOptions} for:item="o">
-                                        <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
-                                    </template>
-                                </select>
+                                <c-project-board-select
+                                    data-field="Type__c"
+                                    onchange={handleFormChange}
+                                    label="Issue type"
+                                    options={formTypeOptions}
+                                ></c-project-board-select>
                             </div>
                         </div>
                         <div>
                             <label class="field-label">Status</label>
-                            <select class="field-select" data-field="Status__c" onchange={handleFormChange}>
-                                <template for:each={formStatusOptions} for:item="o">
-                                    <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
-                                </template>
-                            </select>
+                            <c-project-board-select
+                                data-field="Status__c"
+                                onchange={handleFormChange}
+                                label="Status"
+                                options={formStatusOptions}
+                            ></c-project-board-select>
                         </div>
                         <div class="full">
                             <label class="field-label">Summary <span class="req">*</span></label>
@@ -73,43 +75,40 @@
                         </div>
                         <div>
                             <label class="field-label">Assignee</label>
-                            <lightning-record-picker
-                                object-api-name="User"
+                            <c-project-board-select
                                 label="Assignee"
-                                variant="label-hidden"
-                                placeholder="Search people..."
-                                value={form.Assignee__c}
-                                filter={userFilter}
-                                display-info={userDisplayInfo}
-                                matching-info={userMatchingInfo}
                                 onchange={handleFormAssignee}
-                            ></lightning-record-picker>
+                                options={formAssigneeOptions}
+                            ></c-project-board-select>
                             <button class="btn btn-link btn-sm" onclick={assignFormToMe}>Assign to me</button>
                         </div>
                         <div>
                             <label class="field-label">Priority</label>
-                            <select class="field-select" data-field="Priority__c" onchange={handleFormChange}>
-                                <template for:each={formPriorityOptions} for:item="o">
-                                    <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
-                                </template>
-                            </select>
+                            <c-project-board-select
+                                data-field="Priority__c"
+                                onchange={handleFormChange}
+                                label="Priority"
+                                options={formPriorityOptions}
+                            ></c-project-board-select>
                         </div>
                         <div>
                             <label class="field-label">Sprint</label>
-                            <select class="field-select" data-field="Sprint__c" onchange={handleFormChange}>
-                                <template for:each={formSprintOptions} for:item="o">
-                                    <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
-                                </template>
-                            </select>
+                            <c-project-board-select
+                                data-field="Sprint__c"
+                                onchange={handleFormChange}
+                                label="Sprint"
+                                options={formSprintOptions}
+                            ></c-project-board-select>
                         </div>
                         <div>
                             <template lwc:if={formCanHaveEpic}>
                                 <label class="field-label">Epic</label>
-                                <select class="field-select" data-field="Epic__c" onchange={handleFormChange}>
-                                    <template for:each={formEpicOptions} for:item="o">
-                                        <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
-                                    </template>
-                                </select>
+                                <c-project-board-select
+                                    data-field="Epic__c"
+                                    onchange={handleFormChange}
+                                    label="Epic"
+                                    options={formEpicOptions}
+                                ></c-project-board-select>
                             </template>
                         </div>
                         <div>
@@ -472,17 +471,16 @@
                         <template lwc:if={isDetailsTab}>
                             <!-- ---------- Side column -->
                             <div class="detail-side">
-                                <select
+                                <c-project-board-select
+                                    class="status-select"
+                                    variant="status"
+                                    tone={statusTone}
                                     disabled={readOnly}
-                                    class={statusSelectClass}
                                     data-field="Status__c"
                                     onchange={handleSelectChange}
-                                    title="Change status"
-                                >
-                                    <template for:each={statusOptions} for:item="o">
-                                        <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
-                                    </template>
-                                </select>
+                                    label="Change status"
+                                    options={statusOptions}
+                                ></c-project-board-select>
 
                                 <div class="details-box">
                                     <div class="details-head">Details</div>
@@ -490,18 +488,12 @@
                                     <div class="detail-row">
                                         <label class="detail-label">Assignee</label>
                                         <div class="detail-value">
-                                            <lightning-record-picker
+                                            <c-project-board-select
                                                 disabled={readOnly}
-                                                object-api-name="User"
                                                 label="Assignee"
-                                                variant="label-hidden"
-                                                placeholder="Unassigned"
-                                                value={issue.assigneeId}
-                                                filter={userFilter}
-                                                display-info={userDisplayInfo}
-                                                matching-info={userMatchingInfo}
                                                 onchange={handleAssigneeChange}
-                                            ></lightning-record-picker>
+                                                options={assigneeOptions}
+                                            ></c-project-board-select>
                                             <template lwc:if={canEdit}
                                                 ><button class="btn btn-link btn-sm" onclick={assignToMe}>
                                                     Assign to me
@@ -524,18 +516,13 @@
                                         <label class="detail-label">Priority</label>
                                         <div class="detail-value select-with-icon">
                                             <span class={issue.prioClass}>{issue.prioGlyph}</span>
-                                            <select
+                                            <c-project-board-select
                                                 disabled={readOnly}
-                                                class="field-select"
                                                 data-field="Priority__c"
                                                 onchange={handleSelectChange}
-                                            >
-                                                <template for:each={priorityOptions} for:item="o">
-                                                    <option key={o.value} value={o.value} selected={o.selected}>
-                                                        {o.label}
-                                                    </option>
-                                                </template>
-                                            </select>
+                                                label="Priority"
+                                                options={priorityOptions}
+                                            ></c-project-board-select>
                                         </div>
                                     </div>
 
@@ -549,36 +536,26 @@
                                                     variant="inverse"
                                                 ></lightning-icon>
                                             </span>
-                                            <select
+                                            <c-project-board-select
                                                 disabled={readOnly}
-                                                class="field-select"
                                                 data-field="Type__c"
                                                 onchange={handleSelectChange}
-                                            >
-                                                <template for:each={typeOptions} for:item="o">
-                                                    <option key={o.value} value={o.value} selected={o.selected}>
-                                                        {o.label}
-                                                    </option>
-                                                </template>
-                                            </select>
+                                                label="Issue type"
+                                                options={typeOptions}
+                                            ></c-project-board-select>
                                         </div>
                                     </div>
 
                                     <div class="detail-row">
                                         <label class="detail-label">Sprint</label>
                                         <div class="detail-value">
-                                            <select
+                                            <c-project-board-select
                                                 disabled={readOnly}
-                                                class="field-select"
                                                 data-field="Sprint__c"
                                                 onchange={handleSelectChange}
-                                            >
-                                                <template for:each={sprintOptions} for:item="o">
-                                                    <option key={o.value} value={o.value} selected={o.selected}>
-                                                        {o.label}
-                                                    </option>
-                                                </template>
-                                            </select>
+                                                label="Sprint"
+                                                options={sprintOptions}
+                                            ></c-project-board-select>
                                         </div>
                                     </div>
 
@@ -586,18 +563,13 @@
                                         <div class="detail-row">
                                             <label class="detail-label">Epic</label>
                                             <div class="detail-value">
-                                                <select
+                                                <c-project-board-select
                                                     disabled={readOnly}
-                                                    class="field-select"
                                                     data-field="Epic__c"
                                                     onchange={handleSelectChange}
-                                                >
-                                                    <template for:each={epicOptions} for:item="o">
-                                                        <option key={o.value} value={o.value} selected={o.selected}>
-                                                            {o.label}
-                                                        </option>
-                                                    </template>
-                                                </select>
+                                                    label="Epic"
+                                                    options={epicOptions}
+                                                ></c-project-board-select>
                                             </div>
                                         </div>
                                     </template>

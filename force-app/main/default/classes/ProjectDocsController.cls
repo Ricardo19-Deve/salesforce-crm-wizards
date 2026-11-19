@@ -84,6 +84,17 @@ public with sharing class ProjectDocsController {
         @AuraEnabled public Boolean canReopen;
         @AuraEnabled public Id currentUserId;
         @AuraEnabled public List<Id> memberUserIds;
+        /** Project members as { id, name }, for the approver picklist. */
+        @AuraEnabled public List<MemberOption> members;
+    }
+
+    public class MemberOption {
+        @AuraEnabled public Id id;
+        @AuraEnabled public String name;
+        MemberOption(Id id, String name) {
+            this.id = id;
+            this.name = name;
+        }
     }
 
     // ---------------------------------------------------------------- BRD
@@ -241,13 +252,16 @@ public with sharing class ProjectDocsController {
             view.brd = getBrd(issueId);
             view.currentUserId = UserInfo.getUserId();
             view.memberUserIds = new List<Id>();
+            view.members = new List<MemberOption>();
             if (view.brd == null) {
                 return view;
             }
             for (PM_Project_Member__c m : [
-                SELECT User__c FROM PM_Project_Member__c WHERE Project__c = :view.brd.Issue__r.Project__c WITH USER_MODE
+                SELECT User__c, User__r.Name FROM PM_Project_Member__c
+                WHERE Project__c = :view.brd.Issue__r.Project__c WITH USER_MODE ORDER BY User__r.Name
             ]) {
                 view.memberUserIds.add(m.User__c);
+                view.members.add(new MemberOption(m.User__c, m.User__r.Name));
             }
             Boolean hasEdit = [
                 SELECT RecordId, HasEditAccess FROM UserRecordAccess
