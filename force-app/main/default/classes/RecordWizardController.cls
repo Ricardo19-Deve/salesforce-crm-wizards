@@ -82,6 +82,29 @@ public with sharing class RecordWizardController {
         }
     }
 
+    // Billing address of the principal Account, keyed by the Contact mailing field it fills (user mode).
+    @AuraEnabled
+    public static Map<String, String> getAccountBillingAddress(Id accountId) {
+        try {
+            requireAccess();
+            Map<String, String> address = new Map<String, String>();
+            if (accountId == null) return address;
+            List<Account> rows = [
+                SELECT BillingStreet, BillingCity, BillingState, BillingPostalCode, BillingCountry
+                FROM Account WHERE Id = :accountId WITH USER_MODE LIMIT 1
+            ];
+            if (rows.isEmpty()) return address;
+            address.put('MailingStreet', rows[0].BillingStreet);
+            address.put('MailingCity', rows[0].BillingCity);
+            address.put('MailingState', rows[0].BillingState);
+            address.put('MailingPostalCode', rows[0].BillingPostalCode);
+            address.put('MailingCountry', rows[0].BillingCountry);
+            return address;
+        } catch (WizardException e) {
+            throw auraError(e);
+        }
+    }
+
     // Names (and city / country for Accounts) of records chosen in record pickers, for the Accounts list and the
     // Summary step. Read in user mode: the user only gets names of records they can already see.
     @AuraEnabled

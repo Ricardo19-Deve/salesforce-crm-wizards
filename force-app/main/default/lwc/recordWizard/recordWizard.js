@@ -22,6 +22,7 @@ import getFields from '@salesforce/apex/RecordWizardController.getFields';
 import getMatchRules from '@salesforce/apex/RecordWizardController.getMatchRules';
 import findMatches from '@salesforce/apex/RecordWizardController.findMatches';
 import suggestAccounts from '@salesforce/apex/RecordWizardController.suggestAccounts';
+import getAccountBillingAddress from '@salesforce/apex/RecordWizardController.getAccountBillingAddress';
 import createRecord from '@salesforce/apex/RecordWizardController.createRecord';
 import getMergeData from '@salesforce/apex/RecordWizardController.getMergeData';
 import mergeContacts from '@salesforce/apex/RecordWizardController.mergeContacts';
@@ -35,6 +36,8 @@ const STEP_FORM = 'form';
 const STEP_SUMMARY = 'summary';
 const STEP_DONE = 'done';
 const MAX_MERGE = 3;
+// Contact mailing fields filled from the principal Account billing address.
+const ADDRESS_FIELDS = ['MailingStreet', 'MailingCity', 'MailingState', 'MailingPostalCode', 'MailingCountry'];
 
 export default class RecordWizard extends NavigationMixin(LightningElement) {
     objectApiName;
@@ -77,6 +80,8 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
     principalAccountId;
     // Names of records chosen in lookups, shown in the Summary step.
     recordNames = {};
+    // Address values filled automatically from the principal Account (replaced when the principal changes).
+    autoAddress = {};
 
     duplicateOutcome;
     wasMerged = false;
@@ -198,6 +203,7 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         this.accountList = [];
         this.principalAccountId = undefined;
         this.recordNames = {};
+        this.autoAddress = {};
         this.duplicateOutcome = undefined;
         this.wasMerged = false;
         if (!this.accessDenied) this.loadError = undefined;
@@ -669,6 +675,50 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         if (this.principalAccountId) {
             this.clearedFields = this.clearedFields.filter((name) => name !== 'AccountId');
         }
+        this.applyAccountAddress(false);
+    }
+
+    get addressFields() {
+        return ADDRESS_FIELDS.filter((api) => (this.allFields || []).some((f) => f.apiName === api));
+    }
+
+    get canCopyAccountAddress() {
+        return Boolean(this.principalAccountId) && this.addressFields.length > 0;
+    }
+
+    // Fills the mailing address with the principal Account billing address. Without overwrite only empty fields and
+    // fields filled automatically before are replaced, so typed or reviewed values are kept.
+    async applyAccountAddress(overwrite) {
+        const fields = this.addressFields;
+        if (!fields.length) return;
+        const accountId = this.principalAccountId;
+        let address = {};
+        if (accountId) {
+            try {
+                address = (await getAccountBillingAddress({ accountId })) || {};
+            } catch (error) {
+                return;
+            }
+        }
+        if (accountId !== this.principalAccountId) return; // the principal changed meanwhile
+        const next = { ...this.fieldValues };
+        const auto = {};
+        fields.forEach((api) => {
+            const current = next[api];
+            const filledByUs = this.autoAddress[api] !== undefined && current === this.autoAddress[api];
+            if (overwrite || filledByUs || !hasValue(current)) {
+                next[api] = address[api] || null;
+                if (address[api]) auto[api] = address[api];
+                this.clearedFields = this.clearedFields.filter((name) => name !== api);
+            }
+        });
+        this.autoAddress = auto;
+        this.fieldValues = next;
+        this.rebuildSections();
+    }
+
+    handleCopyAccountAddress() {
+        this.applyAccountAddress(true);
     }
 
     async handleAccountPicked(event) {

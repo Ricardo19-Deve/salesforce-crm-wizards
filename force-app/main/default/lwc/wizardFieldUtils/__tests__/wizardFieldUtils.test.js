@@ -100,6 +100,14 @@ describe('buildSections and payload', () => {
     });
 });
 
+describe('decorateField', () => {
+    it('uses the validation-rule wording for required fields', () => {
+        const field = resolveField(row('LastName'), OBJECT_INFO);
+        const [section] = buildSections([field], 1, { picklistValues: {}, fieldValues: {}, objectInfo: OBJECT_INFO });
+        expect(section.columns[0].fields[0].missingMessage).toBe('Last Name is mandatory. Please provide a value.');
+    });
+});
+
 describe('helpers', () => {
     it('builds no filter without record types', () => {
         expect(recordTypeFilter([])).toBeUndefined();

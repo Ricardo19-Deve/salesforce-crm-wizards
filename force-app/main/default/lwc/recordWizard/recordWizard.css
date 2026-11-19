@@ -622,3 +622,11 @@
     border-radius: 1rem;
     background: #eef3f7;
 }
+
+.address-copy {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 1rem;
+    margin: -0.1rem 0 0.4rem 0.25rem;
+}

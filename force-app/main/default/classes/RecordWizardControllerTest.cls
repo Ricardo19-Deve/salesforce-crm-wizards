@@ -255,6 +255,22 @@ private class RecordWizardControllerTest {
     }
 
     @IsTest
+    static void billingAddressFillsTheMailingFields() {
+        Account acc = WizardTestData.customerAccount('Address Account', 'Portugal');
+        acc.BillingStreet = '1 Main Street';
+        acc.BillingCity = 'Lisbon';
+        acc.BillingPostalCode = '1000-001';
+        insert acc;
+        System.runAs(wizardUser()) {
+            Map<String, String> address = RecordWizardController.getAccountBillingAddress(acc.Id);
+            Assert.areEqual('1 Main Street', address.get('MailingStreet'));
+            Assert.areEqual('Lisbon', address.get('MailingCity'));
+            Assert.areEqual('Portugal', address.get('MailingCountry'));
+            Assert.isTrue(RecordWizardController.getAccountBillingAddress(null).isEmpty());
+        }
+    }
+
+    @IsTest
     static void matchingHelpers() {
         Assert.isTrue(ContactMatchService.variants('ana silva').contains('Ana Silva'));
         Assert.isTrue(ContactMatchService.sameValue('+351 912 000 001', '351912000001'));
