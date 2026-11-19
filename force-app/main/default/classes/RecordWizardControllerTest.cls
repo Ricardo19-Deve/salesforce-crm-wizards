@@ -1,5 +1,9 @@
 @IsTest
 private class RecordWizardControllerTest {
+    // What the user typed in the Identify step: matches both Ana Silva Contacts and the Lead.
+    private static final String IDENTIFY = JSON.serialize(new Map<String, Object>{
+        'Email' => 'ana.silva@example.com', 'LastName' => 'Silva', 'FirstName' => 'Ana'
+    });
 
     @TestSetup
     static void setup() {
@@ -48,7 +52,7 @@ private class RecordWizardControllerTest {
         User noAccess = WizardTestData.userWith(new List<String>());
         System.runAs(noAccess) {
             try {
-                RecordWizardController.createRecord('Contact', customerContactType(), '{}', false, null, null);
+                RecordWizardController.createRecord('Contact', customerContactType(), '{}', false, null, null, null);
                 Assert.fail('Users without Use_Record_Wizard must be rejected');
             } catch (AuraHandledException e) {
                 Assert.isTrue(e.getMessage().contains('do not have access'));
@@ -87,7 +91,7 @@ private class RecordWizardControllerTest {
         System.runAs(wizardUser()) {
             outcome = RecordWizardController.createRecord(
                 'Contact', customerContactType(), JSON.serialize(fields), true,
-                new List<Id>{ leadId }, new List<Id>{ accountId('Contoso Ltd') }
+                new List<Id>{ leadId }, new List<Id>{ accountId('Contoso Ltd') }, IDENTIFY
             );
         }
         Test.stopTest();
@@ -106,7 +110,7 @@ private class RecordWizardControllerTest {
         };
         System.runAs(wizardUser()) {
             try {
-                RecordWizardController.createRecord('Contact', customerContactType(), JSON.serialize(fields), true, null, null);
+                RecordWizardController.createRecord('Contact', customerContactType(), JSON.serialize(fields), true, null, null, null);
                 Assert.fail('Partner accounts are not allowed for customer contacts');
             } catch (AuraHandledException e) {
                 Assert.isTrue(e.getMessage().contains('not allowed'));
@@ -118,7 +122,7 @@ private class RecordWizardControllerTest {
     static void requiredFieldsAreChecked() {
         System.runAs(wizardUser()) {
             try {
-                RecordWizardController.createRecord('Contact', customerContactType(), '{"FirstName":"Only"}', false, null, null);
+                RecordWizardController.createRecord('Contact', customerContactType(), '{"FirstName":"Only"}', false, null, null, null);
                 Assert.fail('Last Name is required');
             } catch (AuraHandledException e) {
                 Assert.isTrue(e.getMessage().contains('required'));
@@ -133,13 +137,13 @@ private class RecordWizardControllerTest {
         };
         System.runAs(wizardUser()) {
             RecordWizardController.SaveOutcome first = RecordWizardController.createRecord(
-                'Contact', customerContactType(), JSON.serialize(fields), false, null, null);
+                'Contact', customerContactType(), JSON.serialize(fields), false, null, null, null);
             if (first.duplicates != null) {
                 // An active duplicate rule found the existing Ana Silva: the user can review it or save anyway.
                 Assert.isFalse(first.duplicates.isEmpty());
                 if (first.canSaveAnyway) {
                     RecordWizardController.SaveOutcome second = RecordWizardController.createRecord(
-                        'Contact', customerContactType(), JSON.serialize(fields), true, null, null);
+                        'Contact', customerContactType(), JSON.serialize(fields), true, null, null, null);
                     Assert.isNotNull(second.recordId);
                 }
             } else {
@@ -159,7 +163,8 @@ private class RecordWizardControllerTest {
         System.runAs(wizardUser()) {
             ContactMergeService.MergeData data = RecordWizardController.getMergeData(
                 customerContactType(), new List<Id>{ keep, other }, new List<Id>{ leadId },
-                JSON.serialize(new Map<String, Object>{ 'LastName' => 'Silva', 'Email' => 'ana.silva@example.com' })
+                JSON.serialize(new Map<String, Object>{ 'LastName' => 'Silva', 'Email' => 'ana.silva@example.com' }),
+                IDENTIFY
             );
             Assert.areEqual(3, data.records.size());
             Assert.isFalse(data.rows.isEmpty(), 'Email and Account differ between the records');
@@ -167,7 +172,7 @@ private class RecordWizardControllerTest {
             RecordWizardController.mergeContacts(
                 customerContactType(), keep, new List<Id>{ keep, other },
                 JSON.serialize(new Map<String, Object>{ 'Email' => 'ana.silva@example.com', 'Title' => '' }),
-                new List<Id>{ leadId }, null
+                new List<Id>{ leadId }, null, IDENTIFY
             );
         }
         Test.stopTest();
@@ -180,13 +185,13 @@ private class RecordWizardControllerTest {
     static void mergeLimitsAreEnforced() {
         System.runAs(wizardUser()) {
             try {
-                RecordWizardController.getMergeData(customerContactType(), new List<Id>(), new List<Id>(), '{}');
+                RecordWizardController.getMergeData(customerContactType(), new List<Id>(), new List<Id>(), '{}', null);
                 Assert.fail('Nothing selected');
             } catch (AuraHandledException e) {
                 Assert.isTrue(e.getMessage().contains('at least one'));
             }
             try {
-                RecordWizardController.mergeContacts(customerContactType(), null, null, '{}', null, null);
+                RecordWizardController.mergeContacts(customerContactType(), null, null, '{}', null, null, null);
                 Assert.fail('The Contact to keep is required');
             } catch (AuraHandledException e) {
                 Assert.isTrue(e.getMessage().contains('Contact to keep'));
@@ -202,7 +207,7 @@ private class RecordWizardControllerTest {
         };
         RecordWizardController.SaveOutcome outcome;
         System.runAs(wizardUser()) {
-            outcome = RecordWizardController.createRecord('Campaign', eventType, JSON.serialize(fields), false, null, null);
+            outcome = RecordWizardController.createRecord('Campaign', eventType, JSON.serialize(fields), false, null, null, null);
         }
         Assert.areEqual('North-2027-Spring Summit', [SELECT Name FROM Campaign WHERE Id = :outcome.recordId].Name);
     }
@@ -257,5 +262,57 @@ private class RecordWizardControllerTest {
         Assert.isFalse(ContactMatchService.sameValue(null, 'x'));
         Assert.areEqual('MailingCity', ContactMergeService.leadToContactMapping().get('City'));
         Assert.areEqual('Preferred_Language__c', ContactMergeService.leadToContactMapping().get('Preferred_Language__c'));
+    }
+
+    @IsTest
+    static void recordsTheUserCannotOpenAreShownWithoutDetails() {
+        Contact hidden = [SELECT Id FROM Contact WHERE Email = 'ana.silva@example.com' LIMIT 1];
+        ContactMatchService.unreadableForTest = new Set<Id>{ hidden.Id };
+        System.runAs(wizardUser()) {
+            ContactMatchService.MatchResult result = RecordWizardController.findMatches(customerContactType(), IDENTIFY);
+            Boolean found = false;
+            for (ContactMatchService.MatchCandidate c : result.candidates) {
+                if (c.recordId != hidden.Id) continue;
+                found = true;
+                Assert.isTrue(c.restricted);
+                Assert.areEqual('a•••@e•••.com', c.email, 'Email masked');
+                Assert.isNull(c.accountName, 'Account hidden');
+                Assert.areEqual('Ana Silva', c.name, 'The name stays, to recognise the duplicate');
+            }
+            Assert.isTrue(found, 'Restricted duplicates are still reported');
+        }
+    }
+
+    @IsTest
+    static void onlyGenuineDuplicatesOfOthersCanBeMerged() {
+        List<Contact> contacts = [SELECT Id FROM Contact ORDER BY Email];
+        Id keep = contacts[1].Id;      // ana.silva@example.com
+        Id other = contacts[0].Id;     // ana.s@example.com
+        ContactMatchService.unreadableForTest = new Set<Id>{ keep, other };
+        System.runAs(wizardUser()) {
+            String unrelated = JSON.serialize(new Map<String, Object>{ 'Email' => 'someone.else@example.com', 'LastName' => 'Costa' });
+            try {
+                RecordWizardController.mergeContacts(customerContactType(), keep, new List<Id>{ keep, other }, '{}', null, null, unrelated);
+                Assert.fail('Records the user cannot open must be genuine duplicates of what was typed');
+            } catch (AuraHandledException e) {
+                Assert.isTrue(e.getMessage().contains('not a duplicate'));
+            }
+            try {
+                RecordWizardController.getMergeData(customerContactType(), new List<Id>{ keep }, null, '{}', null);
+                Assert.fail('Without Identify values, only records the user can open are accepted');
+            } catch (AuraHandledException e) {
+                Assert.isTrue(e.getMessage().contains('not a duplicate'));
+            }
+            ContactMergeService.MergeData data = RecordWizardController.getMergeData(
+                customerContactType(), new List<Id>{ keep, other }, null, '{}', IDENTIFY);
+            Assert.areEqual(2, data.records.size(), 'Genuine duplicates owned by others stay mergeable');
+        }
+    }
+
+    @IsTest
+    static void maskedEmailKeepsOnlyInitials() {
+        Assert.areEqual('a•••@n•••.com', ContactMatchService.maskEmail('ana.silva@northwind.com'));
+        Assert.isNull(ContactMatchService.maskEmail('not-an-email'));
+        Assert.isNull(ContactMatchService.maskEmail(null));
     }
 }

@@ -154,4 +154,17 @@ private class OpportunityWizardControllerTest {
             }
         }
     }
+
+    @IsTest
+    static void catalogNeedsTheWizardPermission() {
+        User noAccess = WizardTestData.userWith(new List<String>());
+        System.runAs(noAccess) {
+            try {
+                OpportunityWizardController.getCatalog(accountId('Contoso Ltd'));
+                Assert.fail('Price book entries are read in system mode: the permission is required');
+            } catch (AuraHandledException e) {
+                Assert.isTrue(e.getMessage().contains('do not have access'));
+            }
+        }
+    }
 }

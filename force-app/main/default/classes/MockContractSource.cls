@@ -1,6 +1,7 @@
 /**
  * Demo implementation of ContractFeed.Source: serves the sample contracts of the static resource MockContracts
- * (fictitious companies, no real data) with the same paging and "updated since" behaviour a real API would have.
+ * (fictitious companies, no real data) with the same paging, "updated since" filter and oldest-change-first order a
+ * real API would have.
  * Makes no callout.
  */
 public with sharing class MockContractSource implements ContractFeed.Source {
@@ -17,6 +18,16 @@ public with sharing class MockContractSource implements ContractFeed.Source {
             }
         }
 
+        List<ByUpdate> ordered = new List<ByUpdate>();
+        for (ContractFeed.Item item : matching) {
+            ordered.add(new ByUpdate(item));
+        }
+        ordered.sort();
+        matching.clear();
+        for (ByUpdate wrapper : ordered) {
+            matching.add(wrapper.item);
+        }
+
         ContractFeed.ResultPage result = new ContractFeed.ResultPage();
         Integer first = (safePage - 1) * safeSize;
         for (Integer i = first; i < Math.min(first + safeSize, matching.size()); i++) {
@@ -24,6 +35,25 @@ public with sharing class MockContractSource implements ContractFeed.Source {
         }
         result.hasMore = first + safeSize < matching.size();
         return result;
+    }
+
+    /** Oldest change first, then by id, as ContractFeed.Source requires. */
+    private class ByUpdate implements Comparable {
+        final ContractFeed.Item item;
+        ByUpdate(ContractFeed.Item item) {
+            this.item = item;
+        }
+        public Integer compareTo(Object other) {
+            ContractFeed.Item that = ((ByUpdate) other).item;
+            Long mine = item.updatedAt == null ? 0 : item.updatedAt.getTime();
+            Long theirs = that.updatedAt == null ? 0 : that.updatedAt.getTime();
+            if (mine != theirs) {
+                return mine < theirs ? -1 : 1;
+            }
+            String myId = item.id == null ? '' : item.id;
+            String theirId = that.id == null ? '' : that.id;
+            return myId.compareTo(theirId);
+        }
     }
 
     private static List<ContractFeed.Item> allItems() {

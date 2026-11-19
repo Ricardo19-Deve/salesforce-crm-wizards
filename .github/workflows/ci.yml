@@ -20,3 +20,52 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+
+  # Apex tests in a temporary scratch org. Runs only when the repository has a DEVHUB_SFDX_AUTH_URL secret
+  # (see README > Tests); without it the job reports a notice and passes, so forks and new clones still build.
+  apex:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      DEVHUB_SFDX_AUTH_URL: ${{ secrets.DEVHUB_SFDX_AUTH_URL }}
+    steps:
+      - name: Check for a connected Dev Hub
+        id: devhub
+        run: |
+          if [ -n "$DEVHUB_SFDX_AUTH_URL" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Apex tests skipped: add the DEVHUB_SFDX_AUTH_URL secret to run them in a scratch org."
+          fi
+      - uses: actions/checkout@v4
+        if: steps.devhub.outputs.enabled == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.devhub.outputs.enabled == 'true'
+        with:
+          node-version: '20'
+      - name: Install Salesforce CLI
+        if: steps.devhub.outputs.enabled == 'true'
+        run: npm install --global @salesforce/cli
+      - name: Connect the Dev Hub
+        if: steps.devhub.outputs.enabled == 'true'
+        run: echo "$DEVHUB_SFDX_AUTH_URL" | sf org login sfdx-url --sfdx-url-stdin --alias devhub --set-default-dev-hub
+      - name: Create a scratch org
+        if: steps.devhub.outputs.enabled == 'true'
+        run: sf org create scratch -f config/project-scratch-def.json --alias ci --duration-days 1 --wait 20 --target-dev-hub devhub
+      - name: Deploy
+        if: steps.devhub.outputs.enabled == 'true'
+        # The sample duplicate rule expects the org's standard Contact rule in position 1 (see docs), which a new
+        # scratch org does not have, so it is left out of the test deployment.
+        run: |
+          args=""
+          for dir in force-app/main/default/*/; do
+            [ "$(basename "$dir")" = "duplicateRules" ] || args="$args -d $dir"
+          done
+          sf project deploy start -o ci $args --wait 30
+      - name: Run Apex tests
+        if: steps.devhub.outputs.enabled == 'true'
+        run: sf apex run test -o ci -l RunLocalTests -c -w 30 -r human
+      - name: Delete the scratch org
+        if: always() && steps.devhub.outputs.enabled == 'true'
+        run: sf org delete scratch -o ci --no-prompt || true

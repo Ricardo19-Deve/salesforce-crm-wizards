@@ -12,7 +12,16 @@ public class WizardTestData {
 
     // A user with only the given permission sets on top of the Standard User profile.
     public static User userWith(List<String> permissionSetNames) {
-        Profile profile = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+        // Profile names are translated into the org language: fall back to any non-admin Salesforce-licence profile.
+        List<Profile> profiles = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+        if (profiles.isEmpty()) {
+            profiles = [
+                SELECT Id FROM Profile
+                WHERE UserLicense.Name = 'Salesforce' AND PermissionsModifyAllData = false AND PermissionsViewAllData = false
+                ORDER BY CreatedDate LIMIT 1
+            ];
+        }
+        Profile profile = profiles[0];
         String unique = String.valueOf(Crypto.getRandomInteger()).replace('-', '');
         User u = new User(
             ProfileId = profile.Id,
