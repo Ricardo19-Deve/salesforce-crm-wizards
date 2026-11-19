@@ -7,7 +7,7 @@ This is a neutral open-source reference. It rewrites patterns I built in enterpr
 | Module | What it shows |
 | --- | --- |
 | **Record wizard** (Contact, Campaign) | Admins configure record types, fields, pages, sections, labels and duplicate-match weights in Custom Metadata, with no code changes. |
-| **Contact creation, merge & conversion** | Search as you type across Contacts and unconverted Leads (configurable weights rank the results; no scores are shown to users). A field-by-field review lets the user merge up to 3 Contacts and convert the chosen Leads into the kept Contact. An Accounts section has one **Principal Account** and any number of **Related Accounts**, with suggestions from the Lead company. A **Summary** step shows the final values and the records kept, merged and converted before saving. Duplicate rules are handled with "Save anyway" and "Merge with existing". |
+| **Contact creation, merge & conversion** | Search as you type across Contacts and unconverted Leads (configurable weights rank the results; no scores are shown to users). A field-by-field review lets the user merge up to 3 Contacts and convert the chosen Leads into the kept Contact. An Accounts section has one **Principal Account** and any number of **Related Accounts**, with suggestions from the Lead company; the Principal Account billing address fills the empty mailing address fields. A **Summary** step shows the final values and the records kept, merged and converted before saving. Duplicate rules are handled with "Save anyway" and "Merge with existing". |
 | **Opportunity + products wizard** | The price book is chosen from the Account's country (rule-based, with a fallback). The wizard saves the Opportunity and its lines in one transaction. The server decides the stage, price book and currency. |
 | **Contract sync pattern** | A Queueable and a Schedulable run an incremental sync with a watermark and an upsert on an external id. The sync reads a `ContractFeed.Source` interface. This repository only ships a **mock** source (static-resource JSON), so it makes no callouts. |
 | **Before-save Flow** | `Campaign_Set_Name` builds a consistent Campaign name. It is bulk-safe and uses no SOQL or DML. |
@@ -144,7 +144,7 @@ The configuration guide is in [docs/configuration.md](docs/configuration.md). In
 
 ## Tests
 
-- **Apex:** 46 tests with `sf apex run test -l RunLocalTests -c`, all passing in a fresh scratch org on 19 Nov 2026 with 90% org-wide coverage (project classes 70–100%). The CI runs them too when a Dev Hub is connected (see below).
+- **Apex:** 47 tests with `sf apex run test -l RunLocalTests -c`, all passing in a Developer Edition org on 19 Nov 2026 (the previous 46 also in a fresh scratch org, 90% org-wide coverage, project classes 70–100%). The CI runs them too when a Dev Hub is connected (see below).
 - **Org-dependent branches:** a few branches depend on org features. Related Accounts need *Contacts to Multiple Accounts* enabled.
 - **Configuration tests:** they use in-memory Custom Metadata rows.
 - **Controller tests:** they use the sample configuration shipped in `customMetadata/`.

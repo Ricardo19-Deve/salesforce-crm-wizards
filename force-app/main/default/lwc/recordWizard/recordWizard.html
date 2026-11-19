@@ -119,6 +119,13 @@
                                     <lightning-button-icon icon-name="utility:close" variant="bare" alternative-text="Remove"
                                         title="Remove" data-id={principalRow.id} onclick={handleRemoveAccount}></lightning-button-icon>
                                 </div>
+                                <template if:true={canCopyAccountAddress}>
+                                    <div class="address-copy">
+                                        <span class="merge-hint">Its billing address fills the empty mailing address fields.</span>
+                                        <lightning-button variant="base" label="Copy the Account billing address" icon-name="utility:location"
+                                            onclick={handleCopyAccountAddress}></lightning-button>
+                                    </div>
+                                </template>
                             </template>
                             <template if:false={principalRow}>
                                 <div class="account-add">
@@ -225,7 +232,7 @@
                         </template>
                     </div>
                     <p class="merge-hint">
-                        Start with the Email or the Last Name: matching Contacts and Leads appear below as you type.
+                        Start with the Last Name or the Email: matching Contacts and Leads appear below as you type.
                         <template if:true={isSearching}><span class="searching">&nbsp;Searching…</span></template>
                     </p>
                 </section>

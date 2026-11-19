@@ -20,7 +20,7 @@
     </values>
     <values>
         <field>Sort_Order__c</field>
-        <value xsi:type="xsd:double">30</value>
+        <value xsi:type="xsd:double">20</value>
     </values>
     <values>
         <field>Active__c</field>

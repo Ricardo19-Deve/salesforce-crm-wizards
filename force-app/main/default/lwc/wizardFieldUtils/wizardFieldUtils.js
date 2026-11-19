@@ -101,7 +101,13 @@ export function picklistOptions(field, picklistValues, fieldValues) {
 // Field descriptor + current value, ready for c-wizard-field-input.
 export function decorateField(field, { picklistValues, fieldValues, objectInfo }) {
     const raw = fieldValues[field.apiName];
-    const decorated = { ...field, value: raw ?? null, checked: raw === true };
+    const decorated = {
+        ...field,
+        value: raw ?? null,
+        checked: raw === true,
+        // Same wording as typical validation rules instead of the generic base-component message.
+        missingMessage: `${field.displayLabel} is mandatory. Please provide a value.`
+    };
     if (field.isPicklist || field.isMultiPicklist) {
         const { options, blocked } = picklistOptions(field, picklistValues, fieldValues);
         decorated.options = options;
