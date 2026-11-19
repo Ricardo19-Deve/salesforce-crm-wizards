@@ -13,11 +13,15 @@
             <input type="search" placeholder="Search issues" value={searchTerm} oninput={handleSearch} />
         </div>
         <template for:each={filters} for:item="f">
-            <select key={f.key} class="field-select filter" data-filter={f.key} onchange={handleFilter} title={f.label}>
-                <template for:each={f.options} for:item="o">
-                    <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
-                </template>
-            </select>
+            <c-project-board-select
+                class="filter"
+                variant="pill"
+                key={f.key}
+                data-filter={f.key}
+                onchange={handleFilter}
+                label={f.label}
+                options={f.options}
+            ></c-project-board-select>
         </template>
         <label class="switch">
             <input type="checkbox" checked={hideDone} onchange={handleHideDone} />

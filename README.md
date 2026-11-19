@@ -35,6 +35,7 @@ Captured in a Developer Edition org with the demo data (fictitious companies and
 | ![Reports](docs/images/15-project-reports.png) Reports: velocity (committed vs delivered) and sprint cards | ![Sprint report PDF](docs/images/16-project-sprint-report-pdf.png) Sprint report exported to PDF |
 | ![BRD PDF](docs/images/17-project-brd-pdf.png) BRD exported to PDF with the recorded sign-off decisions (also available as Word) | ![Sign-off](docs/images/18-project-sign-off.png) Sign-off: one approved with a comment, one waiting for a decision, one not required |
 | ![Members](docs/images/19-project-members.png) Project members and their roles | ![Keyboard move](docs/images/20-project-keyboard-move.png) Keyboard move: the card is lifted with Space and the target column is highlighted |
+| ![Picklist](docs/images/21-project-picklist.png) Picklists follow the design in both themes; the assignee list only offers project members | |
 
 ## Architecture
 
@@ -150,7 +151,7 @@ The configuration guide is in [docs/configuration.md](docs/configuration.md). In
 - **Configuration tests:** they use in-memory Custom Metadata rows.
 - **Controller tests:** they use the sample configuration shipped in `customMetadata/`.
 - **Project Board:** `ProjectBoardControllerTest` and `ProjectDocsControllerTest` run as a user with `Project_Board_User`, so user-mode access is tested too. `ProjectBoardAccessTest` checks project visibility, roles and the sign-off workflow with three Standard User profile users.
-- **JavaScript:** `npm test` runs Jest on the shared field helpers and on `projectBoardUtils`.
+- **JavaScript:** `npm test` runs Jest on the shared field helpers, `projectBoardUtils` and `projectBoardSelect` (21 tests).
 - **CI:** every push runs ESLint and Jest. To run the Apex tests too, add a repository secret `DEVHUB_SFDX_AUTH_URL` with the *Sfdx Auth Url* of a Dev Hub (`sf org display --verbose -o <dev hub>`). The job then creates a one-day scratch org, deploys, runs the tests and deletes the org. Use a Dev Hub dedicated to CI: the secret gives access to it.
 
 ## Project structure

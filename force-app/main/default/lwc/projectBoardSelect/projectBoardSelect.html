@@ -1,0 +1,39 @@
+<template>
+    <div class={wrapClass} onfocusout={handleFocusOut}>
+        <button
+            type="button"
+            class="trigger"
+            aria-haspopup="listbox"
+            aria-expanded={ariaExpanded}
+            aria-label={label}
+            title={label}
+            disabled={disabled}
+            onclick={handleTriggerClick}
+            onkeydown={handleTriggerKey}
+        >
+            <span class="value">{selectedLabel}</span>
+            <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <template lwc:if={open}>
+            <ul class={listClass} role="listbox" aria-label={label} tabindex="-1" onkeydown={handleListKey}>
+                <template for:each={items} for:item="o">
+                    <li
+                        key={o.key}
+                        class={o.cls}
+                        role="option"
+                        aria-selected={o.ariaSelected}
+                        tabindex="-1"
+                        data-index={o.index}
+                        onclick={handleOptionClick}
+                        onmouseenter={handleOptionHover}
+                    >
+                        <span class="option-label">{o.label}</span>
+                        <template lwc:if={o.isSelected}>
+                            <span class="check" aria-hidden="true"></span>
+                        </template>
+                    </li>
+                </template>
+            </ul>
+        </template>
+    </div>
+</template>

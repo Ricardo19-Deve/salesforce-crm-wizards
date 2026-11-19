@@ -25,11 +25,11 @@ import {
     toTime
 } from 'c/projectBoardUtils';
 
-const STATUS_SELECT_CLASS = {
-    'To Do': 'status-select status-todo',
-    'In Progress': 'status-select status-progress',
-    'In Review': 'status-select status-review',
-    Done: 'status-select status-done'
+const STATUS_TONE = {
+    'To Do': 'todo',
+    'In Progress': 'progress',
+    'In Review': 'review',
+    Done: 'done'
 };
 
 function selectOptions(values, current) {
@@ -45,8 +45,8 @@ export default class ProjectBoardIssueDetail extends LightningElement {
     @api defaults;
     /** Viewers see everything but cannot change the issue. */
     @api readOnly = false;
-    /** Users who can be assignees (project Leads and Members); the picker only offers these. */
-    @api assignableUserIds = [];
+    /** Users who can be assignees (project Leads and Members), as { id, name }. */
+    @api assignableUsers = [];
 
     _issueId;
     _connected = false;
@@ -68,12 +68,6 @@ export default class ProjectBoardIssueDetail extends LightningElement {
     history = [];
     activityTab = 'comments';
     activeTab = 'details';
-
-    userDisplayInfo = { primaryField: 'Name', additionalFields: ['Title'] };
-    userMatchingInfo = {
-        primaryField: { fieldPath: 'Name' },
-        additionalFields: [{ fieldPath: 'Email' }]
-    };
 
     @api
     get issueId() {
@@ -104,17 +98,27 @@ export default class ProjectBoardIssueDetail extends LightningElement {
         window.removeEventListener('keydown', this._onKeydown);
     }
 
-    get userFilter() {
-        const criteria = [
-            { fieldPath: 'IsActive', operator: 'eq', value: true },
-            { fieldPath: 'UserType', operator: 'eq', value: 'Standard' }
-        ];
-        const ids = this.assignableUserIds || [];
-        if (ids.length) criteria.push({ fieldPath: 'Id', operator: 'in', value: ids });
-        return {
-            criteria,
-            filterLogic: criteria.map((c, i) => i + 1).join(' AND ')
-        };
+    /** "Unassigned", the project's Leads and Members, and the current assignee if they left the project. */
+    assigneeOptionsFor(currentId, currentName) {
+        const people = [...(this.assignableUsers || [])].sort((a, b) => a.name.localeCompare(b.name));
+        const options = [{ value: '', label: 'Unassigned' }].concat(
+            people.map((p) => ({ value: p.id, label: p.name }))
+        );
+        if (currentId && !people.some((p) => p.id === currentId)) {
+            options.push({ value: currentId, label: currentName || 'Former member' });
+        }
+        return options.map((o) => ({
+            ...o,
+            selected: o.value === (currentId || '')
+        }));
+    }
+
+    get formAssigneeOptions() {
+        return this.assigneeOptionsFor(this.form.Assignee__c, null);
+    }
+
+    get assigneeOptions() {
+        return this.assigneeOptionsFor(this.issue.assigneeId, this.issue.assigneeName);
     }
 
     get canEdit() {
@@ -294,7 +298,7 @@ export default class ProjectBoardIssueDetail extends LightningElement {
     }
 
     handleFormAssignee(event) {
-        this.form = { ...this.form, Assignee__c: event.detail.recordId || null };
+        this.form = { ...this.form, Assignee__c: event.detail.value || null };
     }
 
     assignFormToMe() {
@@ -347,8 +351,8 @@ export default class ProjectBoardIssueDetail extends LightningElement {
         }
     }
 
-    get statusSelectClass() {
-        return STATUS_SELECT_CLASS[this.issue.status] || STATUS_SELECT_CLASS['To Do'];
+    get statusTone() {
+        return STATUS_TONE[this.issue.status] || 'todo';
     }
 
     get statusOptions() {
@@ -553,7 +557,7 @@ export default class ProjectBoardIssueDetail extends LightningElement {
     }
 
     handleAssigneeChange(event) {
-        const id = event.detail.recordId || null;
+        const id = event.detail.value || null;
         if (id === (this.issue.assigneeId || null)) return;
         this.saveFields({ Assignee__c: id });
     }

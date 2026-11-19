@@ -209,8 +209,9 @@ export default class ProjectBoardApp extends LightningElement {
     }
 
     /** Users who can be assignees: Leads and Members. */
-    get assignableUserIds() {
-        return this.members.filter((m) => m.role !== 'Viewer').map((m) => m.userId);
+    /** Leads and Members: the people an issue can be assigned to. */
+    get assignableUsers() {
+        return this.members.filter((m) => m.role !== 'Viewer').map((m) => ({ id: m.userId, name: m.name }));
     }
 
     get memberAvatars() {
