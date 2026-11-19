@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomNotificationType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customNotifTypeName>Project Board Sign-Off</customNotifTypeName>
+    <description>BRD sign-off requested from you, or a decision on a BRD you requested.</description>
+    <desktop>true</desktop>
+    <masterLabel>Project Board Sign-Off</masterLabel>
+    <mobile>true</mobile>
+</CustomNotificationType>

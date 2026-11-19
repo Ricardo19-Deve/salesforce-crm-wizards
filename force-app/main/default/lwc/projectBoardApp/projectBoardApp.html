@@ -37,7 +37,20 @@
                             <div class="project-name">{project.Name}</div>
                             <div class="project-type">Software project · {projectKey}</div>
                         </div>
+                        <button class="members-btn" onclick={openMembers} aria-label="Project members">
+                            <span class="member-stack">
+                                <template for:each={memberAvatars} for:item="m">
+                                    <span key={m.id} class="avatar avatar-xs" style={m.style} title={m.name}
+                                        >{m.initials}</span
+                                    >
+                                </template>
+                            </span>
+                            <span class="member-count">{memberCount}</span>
+                        </button>
                     </div>
+                    <template lwc:if={roleLabel}>
+                        <div class="role-chip">{roleLabel}</div>
+                    </template>
                     <div class="nav-section">Planning</div>
                     <nav class="nav">
                         <template for:each={navItems} for:item="item">
@@ -93,7 +106,12 @@
                         <button class="icon-btn theme-btn" title={themeToggleTitle} onclick={toggleTheme}>
                             <span class="theme-glyph">{themeGlyph}</span>
                         </button>
-                        <button class="btn btn-primary" onclick={handleCreateClick} disabled={showEmptyState}>
+                        <button
+                            class="btn btn-primary"
+                            onclick={handleCreateClick}
+                            disabled={showEmptyState}
+                            hidden={readOnly}
+                        >
                             <lightning-icon icon-name="utility:add" size="xx-small" variant="inverse"></lightning-icon>
                             Create
                         </button>
@@ -150,6 +168,7 @@
                             <template lwc:if={isBoard}>
                                 <c-project-board-kanban
                                     issues={issues}
+                                    read-only={readOnly}
                                     sprints={sprints}
                                     project={project}
                                     current-user-id={currentUserId}
@@ -163,6 +182,7 @@
                             <template lwc:elseif={isBacklog}>
                                 <c-project-board-backlog
                                     issues={issues}
+                                    read-only={readOnly}
                                     sprints={sprints}
                                     project={project}
                                     current-user-id={currentUserId}
@@ -217,6 +237,7 @@
         <template lwc:if={createOpen}>
             <c-project-board-issue-detail
                 mode="create"
+                assignable-user-ids={assignableUserIds}
                 defaults={createDefaults}
                 issues={issues}
                 sprints={sprints}
@@ -229,6 +250,8 @@
         <template lwc:if={showDetail}>
             <c-project-board-issue-detail
                 issue-id={selectedIssueId}
+                read-only={readOnly}
+                assignable-user-ids={assignableUserIds}
                 issues={issues}
                 sprints={sprints}
                 project={project}
@@ -241,9 +264,114 @@
             ></c-project-board-issue-detail>
         </template>
 
+        <!-- ---------------------------------------------------------- Members -->
+        <template lwc:if={membersOpen}>
+            <div class="jm-overlay">
+                <span class="focus-sentinel" tabindex="0" onfocus={trapFirst}></span>
+                <section
+                    role="dialog"
+                    tabindex="-1"
+                    aria-modal="true"
+                    aria-label="Project members"
+                    class="jm-dialog modal-panel"
+                >
+                    <div class="modal-head">
+                        <span class="modal-title">Project members</span>
+                        <button class="icon-btn" title="Close" aria-label="Close" onclick={closeMembers}>
+                            <lightning-icon icon-name="utility:close" size="x-small"></lightning-icon>
+                        </button>
+                    </div>
+                    <div class="modal-content">
+                        <p class="dialog-text">Only members of the project can see it.</p>
+                        <ul class="role-legend">
+                            <li><strong>Lead</strong><span>manages members and plans</span></li>
+                            <li><strong>Member</strong><span>plans, edits and is assignable</span></li>
+                            <li><strong>Viewer</strong><span>reads and exports</span></li>
+                        </ul>
+                        <template lwc:if={dialogError}>
+                            <div class="form-error" role="alert">{dialogError}</div>
+                        </template>
+                        <ul class="member-list">
+                            <template for:each={memberRows} for:item="m">
+                                <li key={m.id} class="member-row">
+                                    <span class="avatar avatar-sm" style={m.style}>{m.initials}</span>
+                                    <div class="member-name">
+                                        <span>{m.name}</span>
+                                        <template lwc:if={m.isOwner}><span class="tag-chip">Owner</span></template>
+                                        <template lwc:if={m.isMe}><span class="tag-chip">You</span></template>
+                                        <template lwc:if={m.noAccess}
+                                            ><span class="tag-chip warn">No app access</span></template
+                                        >
+                                    </div>
+                                    <template lwc:if={canManageMembers}>
+                                        <select
+                                            class="field-select role-select"
+                                            aria-label={m.roleLabel}
+                                            data-id={m.id}
+                                            disabled={m.locked}
+                                            onchange={handleRoleChange}
+                                        >
+                                            <template for:each={m.roleOptions} for:item="o">
+                                                <option key={o.value} value={o.value} selected={o.selected}>
+                                                    {o.label}
+                                                </option>
+                                            </template>
+                                        </select>
+                                        <button
+                                            class="icon-btn"
+                                            title="Remove"
+                                            aria-label={m.removeLabel}
+                                            data-id={m.id}
+                                            disabled={m.locked}
+                                            onclick={handleRemoveMember}
+                                        >
+                                            <lightning-icon icon-name="utility:close" size="xx-small"></lightning-icon>
+                                        </button>
+                                    </template>
+                                    <template lwc:else>
+                                        <span class="role-text">{m.role}</span>
+                                    </template>
+                                </li>
+                            </template>
+                        </ul>
+                        <template lwc:if={canManageMembers}>
+                            <div class="add-member">
+                                <lightning-record-picker
+                                    class="new-member-picker"
+                                    object-api-name="User"
+                                    label="Add a member"
+                                    variant="label-hidden"
+                                    placeholder="Add a person…"
+                                    filter={newMemberFilter}
+                                    onchange={handleNewMember}
+                                ></lightning-record-picker>
+                                <select
+                                    class="field-select role-select"
+                                    aria-label="Role of the new member"
+                                    onchange={handleNewMemberRole}
+                                >
+                                    <template for:each={newRoleOptions} for:item="o">
+                                        <option key={o.value} value={o.value} selected={o.selected}>{o.label}</option>
+                                    </template>
+                                </select>
+                                <button class="btn btn-primary" disabled={addMemberDisabled} onclick={handleAddMember}>
+                                    Add
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="modal-foot">
+                        <button class="btn btn-subtle" onclick={closeMembers}>Done</button>
+                    </div>
+                </section>
+                <span class="focus-sentinel" tabindex="0" onfocus={trapLast}></span>
+            </div>
+        </template>
+
         <!-- ---------------------------------------------------------- Create project -->
         <template lwc:if={projectDialog}>
             <div class="jm-overlay">
+                <span class="focus-sentinel" tabindex="0" onfocus={trapFirst}></span>
                 <section
                     role="dialog"
                     tabindex="-1"
@@ -305,12 +433,14 @@
                         </button>
                     </div>
                 </section>
+                <span class="focus-sentinel" tabindex="0" onfocus={trapLast}></span>
             </div>
         </template>
 
         <!-- ---------------------------------------------------------- Start sprint -->
         <template lwc:if={sprintDialog}>
             <div class="jm-overlay">
+                <span class="focus-sentinel" tabindex="0" onfocus={trapFirst}></span>
                 <section
                     role="dialog"
                     tabindex="-1"
@@ -389,12 +519,14 @@
                         </button>
                     </div>
                 </section>
+                <span class="focus-sentinel" tabindex="0" onfocus={trapLast}></span>
             </div>
         </template>
 
         <!-- ---------------------------------------------------------- Complete sprint -->
         <template lwc:if={completeDialog}>
             <div class="jm-overlay">
+                <span class="focus-sentinel" tabindex="0" onfocus={trapFirst}></span>
                 <section
                     role="dialog"
                     tabindex="-1"
@@ -438,6 +570,7 @@
                         </button>
                     </div>
                 </section>
+                <span class="focus-sentinel" tabindex="0" onfocus={trapLast}></span>
             </div>
         </template>
     </div>

@@ -21,7 +21,7 @@
                         <span class="ring-sub">{progress.detail}</span>
                     </div>
                 </div>
-                <template lwc:if={hasActiveSprint}>
+                <template lwc:if={canCompleteSprint}>
                     <button class="btn" onclick={handleCompleteSprint}>Complete sprint</button>
                 </template>
             </div>
@@ -39,6 +39,8 @@
                         class={a.cls}
                         style={a.style}
                         title={a.name}
+                        aria-label={a.label}
+                        aria-pressed={a.pressed}
                         data-id={a.id}
                         onclick={toggleAssignee}
                     >
@@ -46,11 +48,22 @@
                     </button>
                 </template>
             </div>
-            <button class={onlyMineClass} onclick={toggleOnlyMine}>Only my issues</button>
+            <button class={onlyMineClass} aria-pressed={onlyMinePressed} onclick={toggleOnlyMine}>
+                Only my issues
+            </button>
             <template lwc:if={hasFilters}>
                 <button class="btn btn-link" onclick={clearFilters}>Clear filters</button>
             </template>
+            <span class="kb-hint" aria-hidden="true">
+                <span class="kbd">↑↓←→</span> move focus <span class="kbd">Space</span> pick up / drop
+                <span class="kbd">Enter</span> open
+            </span>
         </div>
+        <p id="board-kb-help" class="sr-only">
+            Use the arrow keys to move between cards and Enter to open an issue. Press Space to pick up a card, the
+            arrow keys to choose its column and position, Space to drop it, and Escape to cancel.
+        </p>
+        <div class="sr-only" role="status" aria-live="assertive">{announcement}</div>
 
         <template lwc:if={showKanbanHint}>
             <div class="info-banner glass">
@@ -65,6 +78,8 @@
                 <div
                     key={col.status}
                     class={col.columnClass}
+                    role="group"
+                    aria-label={col.ariaLabel}
                     data-status={col.status}
                     ondragover={handleDragOver}
                     ondragleave={handleDragLeave}
@@ -91,10 +106,16 @@
                                 key={card.id}
                                 class={card.cardClass}
                                 data-id={card.id}
-                                draggable="true"
+                                role="button"
+                                tabindex={card.tabIndex}
+                                aria-label={card.ariaLabel}
+                                aria-describedby="board-kb-help"
+                                draggable={draggableValue}
                                 ondragstart={handleDragStart}
                                 ondragend={handleDragEnd}
                                 onclick={handleCardClick}
+                                onkeydown={handleCardKeydown}
+                                onfocus={handleCardFocus}
                             >
                                 <div class="card-summary">{card.summary}</div>
                                 <template lwc:if={card.epicId}>
@@ -156,10 +177,12 @@
                             </div>
                         </template>
                         <div class={col.endClass}></div>
-                        <button class="create-inline" data-status={col.status} onclick={handleCreateInColumn}>
-                            <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
-                            Create issue
-                        </button>
+                        <template lwc:if={canEdit}>
+                            <button class="create-inline" data-status={col.status} onclick={handleCreateInColumn}>
+                                <lightning-icon icon-name="utility:add" size="xx-small"></lightning-icon>
+                                Create issue
+                            </button>
+                        </template>
                     </div>
                 </div>
             </template>

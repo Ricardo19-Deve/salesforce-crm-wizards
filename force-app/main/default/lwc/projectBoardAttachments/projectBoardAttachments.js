@@ -31,6 +31,8 @@ export default class ProjectBoardAttachments extends LightningElement {
     @api heading = 'Attachments';
     @api hint = 'Drop files here or click to upload';
     @api accept;
+    /** Hide upload and delete (Viewers, locked documents). */
+    @api readOnly = false;
 
     files = [];
     loading = false;
@@ -68,6 +70,7 @@ export default class ProjectBoardAttachments extends LightningElement {
             return {
                 ...f,
                 createdDate: toTime(f.createdDate),
+                canDelete: f.canDelete && !this.readOnly,
                 url,
                 isImage,
                 icon: isImage ? 'doctype:image' : DOCTYPE_ICONS[ext] || 'doctype:unknown',
@@ -75,6 +78,10 @@ export default class ProjectBoardAttachments extends LightningElement {
                 name: ext ? `${f.title}.${ext}` : f.title
             };
         });
+    }
+
+    get canEdit() {
+        return !this.readOnly;
     }
 
     get count() {

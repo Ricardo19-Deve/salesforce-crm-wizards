@@ -422,3 +422,18 @@ lightning-input-rich-text {
 .timestamps lightning-relative-date-time {
     margin-left: 4px;
 }
+
+/* ---------- Focus trap sentinels and read-only controls */
+.focus-sentinel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+}
+.field-select:disabled,
+.field-input:disabled,
+.status-select:disabled {
+    cursor: default;
+    opacity: 0.75;
+}

@@ -300,3 +300,18 @@
 .quick-input::placeholder {
     color: var(--jx-text-muted);
 }
+
+/* ---------- Keyboard */
+.row:focus-visible {
+    outline: none;
+    border-color: var(--jx-accent);
+    box-shadow: 0 0 0 3px var(--jx-accent-ring);
+}
+.row.lifted {
+    z-index: 2;
+    border-color: var(--jx-accent);
+    box-shadow:
+        0 0 0 3px var(--jx-accent),
+        0 18px 36px var(--jx-accent-glow);
+    transform: translateX(6px) scale(1.01);
+}

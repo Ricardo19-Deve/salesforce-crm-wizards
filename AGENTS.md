@@ -26,10 +26,13 @@
 
 The rules above are for the wizards. The Project Board follows its own model:
 
-1. **User mode only.** Queries use `WITH USER_MODE` and DML uses `as user`; access comes from the `Project_Board_User` permission set. Add new objects, fields, classes and pages to that permission set.
-2. **Field whitelists.** `saveIssue`, `saveBrd`, `saveRequirement` and `saveTestCase` only apply the fields listed in their `*_FIELDS` sets. Extend the set when you add an editable field.
-3. **Design tokens.** Colours come from the `--jx-*` custom properties defined on `.jx-root` in `projectBoardApp`. Do not hard-code colours in child components, and do not use global SLDS classes for layout: the components must also render in LWR sites (native shadow DOM).
-4. **Exports and the Reports view must agree.** Sprint figures are computed in `ProjectExportController` and in `projectBoardReports`; change both together.
+1. **User mode, with one boundary.** Queries use `WITH USER_MODE` and DML uses `as user`. The only `without sharing` class is `ProjectBoardSharing` (managed shares, sign-off decisions, BRD clean-up); check the caller in the controller before you call it, and do not add `without sharing` anywhere else.
+2. **Membership is the access model.** `PM_Project__c` and `PM_BRD__c` are Private and shared to members with the row cause `Project_Member__c`. Write actions check the caller's role (Lead / Member / Viewer) first. A new child object must be Controlled by Parent, or be shared in `ProjectBoardSharing`.
+3. **Permission sets.** Add new objects, fields, classes and pages to both `Project_Board_User` and `Project_Board_Admin` (only the admin set has View All / Modify All).
+4. **Field whitelists.** `saveIssue`, `saveBrd`, `saveRequirement` and `saveTestCase` only apply the fields listed in their `*_FIELDS` sets. Extend the set when you add an editable field.
+5. **Design tokens.** Colours come from the `--jx-*` custom properties defined on `.jx-root` in `projectBoardApp`. Do not hard-code colours in child components, and do not use global SLDS classes for layout: the components must also render in LWR sites (native shadow DOM).
+6. **Exports and the Reports view must agree.** Sprint figures are computed in `ProjectExportController` and in `projectBoardReports`; change both together.
+7. **Keyboard parity.** Every drag & drop has a keyboard path (Space, arrows, Space, Escape) that calls the same move handler and announces the result in the `aria-live` region. Keep them together when you change a move.
 
 ## Commands
 

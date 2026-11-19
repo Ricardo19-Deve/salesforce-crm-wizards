@@ -28,6 +28,9 @@ function parseSteps(json) {
  * UAT test scripts of an issue: test cases with steps, execution result and evidence.
  */
 export default class ProjectBoardTestScripts extends LightningElement {
+    /** Viewers can read and export the scripts but not run or change them. */
+    @api readOnly = false;
+
     testCases = [];
     requirements = [];
     expanded = {};
@@ -71,6 +74,10 @@ export default class ProjectBoardTestScripts extends LightningElement {
     }
 
     // ---------------------------------------------------------------- Getters
+
+    get canEdit() {
+        return !this.readOnly;
+    }
 
     get hasTests() {
         return this.testCases.length > 0;
@@ -274,8 +281,9 @@ export default class ProjectBoardTestScripts extends LightningElement {
     async save(id, fields) {
         try {
             const updated = await saveTestCase({ fields: { Id: id, ...fields } });
-            const fresh = { ...updated, steps: parseSteps(updated.Steps__c) };
-            this.testCases = this.testCases.map((t) => (t.Id === id ? fresh : t));
+            this.testCases = this.testCases.map((t) =>
+                (t.Id === id ? { ...updated, steps: parseSteps(updated.Steps__c) } : t)
+            );
         } catch (e) {
             this.toast('Could not save', reduceErrors(e), 'error');
             this.load();

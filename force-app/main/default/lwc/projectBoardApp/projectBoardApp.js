@@ -1,10 +1,11 @@
 /**
- * Shell of the Project Board: sidebar, top bar, theme, routing between Board / Backlog / Issues / Reports, and the
- * project and sprint dialogs. Loads everything with ProjectBoardController.getBoardData and passes it down.
+ * Shell of the Project Board: sidebar, top bar, theme, routing between Board / Backlog / Issues / Reports, the
+ * project, sprint and members dialogs. Loads everything with ProjectBoardController.getBoardData and passes it down.
  *
  * Where to configure: App Builder / Experience Builder properties (fullScreen, brandName, appName, logoUrl).
  * Gotchas: design tokens (--jx-*) live on .jx-root here and are inherited by every child component; moves are
- * optimistic (the card moves first, the server call follows and a failure reloads the board).
+ * optimistic (the card moves first, the server call follows and a failure reloads the board). The user's project
+ * role decides readOnly (Viewer) for every view.
  */
 import { LightningElement, api } from 'lwc';
 import Toast from 'lightning/toast';
@@ -18,6 +19,9 @@ import createSprint from '@salesforce/apex/ProjectBoardController.createSprint';
 import startSprint from '@salesforce/apex/ProjectBoardController.startSprint';
 import completeSprint from '@salesforce/apex/ProjectBoardController.completeSprint';
 import deleteSprint from '@salesforce/apex/ProjectBoardController.deleteSprint';
+import addMember from '@salesforce/apex/ProjectBoardController.addMember';
+import updateMemberRole from '@salesforce/apex/ProjectBoardController.updateMemberRole';
+import removeMember from '@salesforce/apex/ProjectBoardController.removeMember';
 import {
     decorateIssue,
     reduceErrors,
@@ -97,6 +101,14 @@ export default class ProjectBoardApp extends LightningElement {
     issues = [];
     currentUserId;
     currentUserName = '';
+    members = [];
+    myRole = null;
+    canEdit = true;
+    canManageMembers = false;
+    membersOpen = false;
+    newMemberId = null;
+    newMemberRole = 'Member';
+    lastIssueId = null;
     theme = initialTheme();
     userMenuOpen = false;
 
@@ -170,11 +182,193 @@ export default class ProjectBoardApp extends LightningElement {
             this.sprints = data.sprints || [];
             this.currentUserId = data.currentUserId;
             this.currentUserName = data.currentUserName;
+            this.members = data.members || [];
+            this.myRole = data.myRole;
+            this.canEdit = data.canEdit !== false;
+            this.canManageMembers = data.canManageMembers === true;
             const stats = data.stats || {};
             this.issues = (data.issues || []).map((r) => decorateIssue(r, stats[r.Id]));
         } catch (e) {
             this.toastError('Could not load project', e);
         }
+    }
+
+    // ---------------------------------------------------------------- Members & roles
+
+    get readOnly() {
+        return !this.canEdit;
+    }
+
+    get canCreateIssue() {
+        return !this.showEmptyState && this.canEdit;
+    }
+
+    get roleLabel() {
+        if (!this.myRole) return '';
+        return this.myRole === 'Viewer' ? 'Viewer · read only' : this.myRole;
+    }
+
+    /** Users who can be assignees: Leads and Members. */
+    get assignableUserIds() {
+        return this.members.filter((m) => m.role !== 'Viewer').map((m) => m.userId);
+    }
+
+    get memberAvatars() {
+        return this.members.slice(0, 4).map((m) => ({
+            id: m.id,
+            name: m.name,
+            initials: initials(m.name),
+            style: avatarStyle(m.userId)
+        }));
+    }
+
+    get memberCount() {
+        return this.members.length;
+    }
+
+    get memberRows() {
+        const leads = this.members.filter((m) => m.role === 'Lead').length;
+        return this.members.map((m) => ({
+            ...m,
+            initials: initials(m.name),
+            style: avatarStyle(m.userId),
+            roleOptions: ['Lead', 'Member', 'Viewer'].map((r) => ({
+                value: r,
+                label: r,
+                selected: r === m.role
+            })),
+            roleLabel: `Role of ${m.name}`,
+            removeLabel: `Remove ${m.name} from the project`,
+            // The last lead cannot be removed or demoted
+            locked: m.role === 'Lead' && leads === 1,
+            isMe: m.userId === this.currentUserId,
+            noAccess: !m.hasPermission
+        }));
+    }
+
+    get newMemberFilter() {
+        const criteria = [
+            { fieldPath: 'IsActive', operator: 'eq', value: true },
+            { fieldPath: 'UserType', operator: 'eq', value: 'Standard' }
+        ];
+        const ids = this.members.map((m) => m.userId);
+        if (ids.length) criteria.push({ fieldPath: 'Id', operator: 'nin', value: ids });
+        return {
+            criteria,
+            filterLogic: criteria.map((c, i) => i + 1).join(' AND ')
+        };
+    }
+
+    get newRoleOptions() {
+        return ['Lead', 'Member', 'Viewer'].map((r) => ({
+            value: r,
+            label: r,
+            selected: r === this.newMemberRole
+        }));
+    }
+
+    get addMemberDisabled() {
+        return !this.newMemberId || this.dialogBusy;
+    }
+
+    openMembers() {
+        this.dialogError = null;
+        this.newMemberId = null;
+        this.newMemberRole = 'Member';
+        this.membersOpen = true;
+    }
+
+    closeMembers() {
+        this.membersOpen = false;
+    }
+
+    handleNewMember(event) {
+        this.newMemberId = event.detail.recordId || null;
+    }
+
+    handleNewMemberRole(event) {
+        this.newMemberRole = event.target.value;
+    }
+
+    async handleAddMember() {
+        await this.memberAction(async () => {
+            const added = await addMember({
+                projectId: this.projectId,
+                userId: this.newMemberId,
+                role: this.newMemberRole
+            });
+            this.newMemberId = null;
+            const picker = this.template.querySelector('.new-member-picker');
+            if (picker && picker.clearSelection) picker.clearSelection();
+            if (added && !added.hasPermission) {
+                this.toast(
+                    `${added.name} was added`,
+                    'They also need the app permission set before they can open the board.',
+                    'warning'
+                );
+            }
+        });
+    }
+
+    async handleRoleChange(event) {
+        const memberId = event.target.dataset.id;
+        const role = event.target.value;
+        await this.memberAction(() => updateMemberRole({ memberId, role }));
+    }
+
+    async handleRemoveMember(event) {
+        const memberId = event.currentTarget.dataset.id;
+        const member = this.members.find((m) => m.id === memberId);
+        const ok = await LightningConfirm.open({
+            message: `${member.name} will no longer see this project. Issues assigned to them keep their assignee.`,
+            label: `Remove ${member.name}?`,
+            theme: 'warning'
+        });
+        if (!ok) return;
+        await this.memberAction(() => removeMember({ memberId }));
+    }
+
+    async memberAction(fn) {
+        this.dialogBusy = true;
+        this.dialogError = null;
+        try {
+            await fn();
+            await this.loadBoard();
+        } catch (e) {
+            this.dialogError = reduceErrors(e);
+        } finally {
+            this.dialogBusy = false;
+        }
+    }
+
+    // ---------------------------------------------------------------- Focus
+
+    /** Keeps Tab inside the open dialog (focus sentinels before and after it). */
+    trapFirst(event) {
+        const dialog = event.target.parentElement.querySelector('.jm-dialog');
+        const items = dialog
+            ? dialog.querySelectorAll(
+                  'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea, a[href]'
+              )
+            : [];
+        if (items.length) items[items.length - 1].focus();
+    }
+
+    trapLast(event) {
+        const dialog = event.target.parentElement.querySelector('.jm-dialog');
+        const first = dialog
+            ? dialog.querySelector(
+                  'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea, a[href]'
+              )
+            : null;
+        if (first) first.focus();
+    }
+
+    /** Returns the keyboard focus to the card of the issue that was open. */
+    restoreFocus(id) {
+        if (!id) return;
+        const view = this.template.querySelector('c-project-board-kanban, c-project-board-backlog');
+        if (view && view.focusIssue) view.focusIssue(id);
     }
 
     // ---------------------------------------------------------------- Getters
@@ -371,8 +565,10 @@ export default class ProjectBoardApp extends LightningElement {
     }
 
     handleDetailClose() {
+        const id = this.selectedIssueId;
         this.selectedIssueId = null;
         this.createOpen = false;
+        this.restoreFocus(id);
     }
 
     handleIssueChanged() {
@@ -555,6 +751,7 @@ export default class ProjectBoardApp extends LightningElement {
     }
 
     closeDialogs() {
+        this.membersOpen = false;
         this.sprintDialog = null;
         this.completeDialog = null;
         this.projectDialog = null;

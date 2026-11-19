@@ -1,6 +1,9 @@
 /**
- * Kanban board of the active sprint (or all open work when no sprint is active), with HTML5 drag & drop.
+ * Kanban board of the active sprint (or all open work when no sprint is active), with HTML5 drag & drop and a
+ * full keyboard alternative: arrows move the focus between cards, Space picks a card up, arrows choose the target
+ * column and position, Space drops it and Escape cancels. A live region announces every step.
  * Gotchas: ranks are fractional (midRank), so a move updates a single record; filters only change what is shown.
+ * Only one card is in the Tab order at a time (roving tabindex). Viewers (readOnly) can browse but not move.
  */
 import { LightningElement, api } from 'lwc';
 import {
@@ -20,6 +23,7 @@ export default class ProjectBoardKanban extends LightningElement {
     @api sprints = [];
     @api project;
     @api currentUserId;
+    @api readOnly = false;
 
     searchTerm = '';
     onlyMine = false;
@@ -28,6 +32,35 @@ export default class ProjectBoardKanban extends LightningElement {
     dragId;
     dropStatus;
     dropIndex;
+    keyboardLift = false;
+
+    focusId;
+    pendingFocusId;
+    announcement = '';
+
+    /** Puts the keyboard focus back on a card (e.g. after its issue modal closes). */
+    @api
+    focusIssue(id) {
+        this.focusId = id;
+        this.pendingFocusId = id;
+        // The parent may still be re-rendering (e.g. removing a modal): focus once that has settled
+        Promise.resolve()
+            .then(() => Promise.resolve())
+            .then(() => this.applyPendingFocus());
+    }
+
+    applyPendingFocus() {
+        if (!this.pendingFocusId) return;
+        const el = this.template.querySelector(`.card[data-id="${this.pendingFocusId}"]`);
+        if (el) {
+            el.focus();
+            this.pendingFocusId = null;
+        }
+    }
+
+    renderedCallback() {
+        this.applyPendingFocus();
+    }
 
     // ---------------------------------------------------------------- Sprint header
 
@@ -39,8 +72,16 @@ export default class ProjectBoardKanban extends LightningElement {
         return !!this.activeSprint;
     }
 
+    get canCompleteSprint() {
+        return this.hasActiveSprint && !this.readOnly;
+    }
+
     get showKanbanHint() {
         return !this.activeSprint;
+    }
+
+    get canEdit() {
+        return !this.readOnly;
     }
 
     get projectName() {
@@ -101,13 +142,18 @@ export default class ProjectBoardKanban extends LightningElement {
         this.scopeIssues.forEach((i) => {
             if (i.assigneeId && !seen.has(i.assigneeId)) seen.set(i.assigneeId, i.assigneeName);
         });
-        return [...seen.entries()].map(([id, name]) => ({
-            id,
-            name,
-            initials: initials(name),
-            style: avatarStyle(id),
-            cls: 'avatar avatar-filter' + (this.selectedAssignees.includes(id) ? ' selected' : '')
-        }));
+        return [...seen.entries()].map(([id, name]) => {
+            const selected = this.selectedAssignees.includes(id);
+            return {
+                id,
+                name,
+                initials: initials(name),
+                style: avatarStyle(id),
+                label: `Show only issues assigned to ${name}`,
+                pressed: selected ? 'true' : 'false',
+                cls: 'avatar avatar-filter' + (selected ? ' selected' : '')
+            };
+        });
     }
 
     get filteredIssues() {
@@ -125,6 +171,10 @@ export default class ProjectBoardKanban extends LightningElement {
 
     get onlyMineClass() {
         return this.onlyMine ? 'btn btn-selected' : 'btn btn-subtle';
+    }
+
+    get onlyMinePressed() {
+        return this.onlyMine ? 'true' : 'false';
     }
 
     handleSearch(event) {
@@ -154,7 +204,19 @@ export default class ProjectBoardKanban extends LightningElement {
         return this.filteredIssues.filter((i) => i.status === status).sort((a, b) => a.rank - b.rank);
     }
 
+    /** Card that owns the Tab stop: the last focused card, or the first card of the board. */
+    get tabStopId() {
+        const visible = this.filteredIssues;
+        if (this.focusId && visible.some((i) => i.id === this.focusId)) return this.focusId;
+        for (const status of STATUSES) {
+            const first = this.columnIssues(status)[0];
+            if (first) return first.id;
+        }
+        return null;
+    }
+
     get columns() {
+        const tabStop = this.tabStopId;
         return STATUSES.map((status) => {
             const items = this.columnIssues(status);
             const isTarget = !!this.dragId && this.dropStatus === status;
@@ -162,12 +224,20 @@ export default class ProjectBoardKanban extends LightningElement {
             const cards = items.map((issue) => {
                 let cardClass = 'card';
                 if (issue.id === this.dragId) {
-                    cardClass += ' dragging';
+                    cardClass += this.keyboardLift ? ' lifted' : ' dragging';
                 } else {
                     if (isTarget && index === this.dropIndex) cardClass += ' drop-before';
                     index++;
                 }
-                return { ...issue, cardClass };
+                const points = issue.hasPoints ? `, ${issue.points} points` : '';
+                return {
+                    ...issue,
+                    cardClass,
+                    tabIndex: issue.id === tabStop ? '0' : '-1',
+                    ariaLabel:
+                        `${issue.key}: ${issue.summary}. ${issue.type}, ${issue.priority} priority${points}, ` +
+                        `${issue.assigneeId ? 'assigned to ' + issue.assigneeName : 'unassigned'}.`
+                };
             });
             const points = sumPoints(items);
             return {
@@ -177,6 +247,7 @@ export default class ProjectBoardKanban extends LightningElement {
                 points,
                 hasPoints: points > 0,
                 isDone: status === 'Done',
+                ariaLabel: `${status}, ${items.length} issue${items.length === 1 ? '' : 's'}`,
                 dotClass: 'dot dot-' + status.toLowerCase().replace(/\s+/g, '-'),
                 isEmpty: items.length === 0,
                 columnClass: 'column' + (isTarget ? ' column-over' : ''),
@@ -185,16 +256,25 @@ export default class ProjectBoardKanban extends LightningElement {
         });
     }
 
-    // ---------------------------------------------------------------- Drag & drop
+    get draggableValue() {
+        return this.readOnly ? 'false' : 'true';
+    }
+
+    // ---------------------------------------------------------------- Mouse drag & drop
 
     handleDragStart(event) {
+        if (this.readOnly) {
+            event.preventDefault();
+            return;
+        }
+        this.keyboardLift = false;
         this.dragId = event.currentTarget.dataset.id;
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', this.dragId);
     }
 
     handleDragOver(event) {
-        if (!this.dragId) return;
+        if (!this.dragId || this.keyboardLift) return;
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
         const column = event.currentTarget;
@@ -216,6 +296,7 @@ export default class ProjectBoardKanban extends LightningElement {
 
     handleDragLeave(event) {
         if (
+            !this.keyboardLift &&
             !event.currentTarget.contains(event.relatedTarget) &&
             this.dropStatus === event.currentTarget.dataset.status
         ) {
@@ -225,16 +306,30 @@ export default class ProjectBoardKanban extends LightningElement {
 
     handleDrop(event) {
         event.preventDefault();
+        if (this.keyboardLift) return;
         const id = this.dragId;
         const status = this.dropStatus;
         const index = this.dropIndex;
         this.resetDrag();
-        if (!id || !status) return;
+        if (id && status) this.commitMove(id, status, index);
+    }
 
+    handleDragEnd() {
+        if (!this.keyboardLift) this.resetDrag();
+    }
+
+    resetDrag() {
+        this.dragId = null;
+        this.dropStatus = null;
+        this.dropIndex = null;
+        this.keyboardLift = false;
+    }
+
+    /** Moves an issue to a column and a position among the other cards of that column. */
+    commitMove(id, status, index) {
         const dragged = this.issues.find((i) => i.id === id);
         const target = this.columnIssues(status);
-        if (dragged.status === status && target.findIndex((i) => i.id === id) === index) return;
-
+        if (dragged.status === status && target.findIndex((i) => i.id === id) === index) return false;
         const others = target.filter((i) => i.id !== id);
         const prev = others[index - 1];
         const next = others[index];
@@ -248,26 +343,160 @@ export default class ProjectBoardKanban extends LightningElement {
                 }
             })
         );
+        return true;
     }
 
-    handleDragEnd() {
-        this.resetDrag();
+    // ---------------------------------------------------------------- Keyboard
+
+    /** Card ids per column, in display order. */
+    get grid() {
+        return STATUSES.map((status) => this.columnIssues(status).map((i) => i.id));
     }
 
-    resetDrag() {
-        this.dragId = null;
-        this.dropStatus = null;
-        this.dropIndex = null;
+    position(id) {
+        const grid = this.grid;
+        for (let c = 0; c < grid.length; c++) {
+            const r = grid[c].indexOf(id);
+            if (r >= 0) return { c, r };
+        }
+        return null;
+    }
+
+    handleCardFocus(event) {
+        this.focusId = event.currentTarget.dataset.id;
+    }
+
+    handleCardKeydown(event) {
+        const id = event.currentTarget.dataset.id;
+        if (this.keyboardLift) {
+            this.handleLiftedKey(event);
+            return;
+        }
+        const pos = this.position(id);
+        if (!pos) return;
+        const grid = this.grid;
+        let targetId = null;
+        switch (event.key) {
+            case 'Enter':
+                event.preventDefault();
+                this.open(id);
+                return;
+            case ' ':
+            case 'Spacebar':
+                event.preventDefault();
+                this.lift(id, pos);
+                return;
+            case 'ArrowUp':
+                targetId = grid[pos.c][Math.max(0, pos.r - 1)];
+                break;
+            case 'ArrowDown':
+                targetId = grid[pos.c][Math.min(grid[pos.c].length - 1, pos.r + 1)];
+                break;
+            case 'Home':
+                targetId = grid[pos.c][0];
+                break;
+            case 'End':
+                targetId = grid[pos.c][grid[pos.c].length - 1];
+                break;
+            case 'ArrowLeft':
+            case 'ArrowRight': {
+                const step = event.key === 'ArrowLeft' ? -1 : 1;
+                for (let c = pos.c + step; c >= 0 && c < grid.length; c += step) {
+                    if (grid[c].length) {
+                        targetId = grid[c][Math.min(pos.r, grid[c].length - 1)];
+                        break;
+                    }
+                }
+                break;
+            }
+            default:
+                return;
+        }
+        event.preventDefault();
+        if (targetId && targetId !== id) this.focusIssue(targetId);
+    }
+
+    lift(id, pos) {
+        const issue = this.issues.find((i) => i.id === id);
+        if (this.readOnly) {
+            this.announce('You can view this board but not move issues. Ask a project lead for the Member role.');
+            return;
+        }
+        this.keyboardLift = true;
+        this.dragId = id;
+        this.dropStatus = STATUSES[pos.c];
+        this.dropIndex = pos.r;
+        this.announce(
+            `Picked up ${issue.key}. ${this.targetText()}. Use the arrow keys to move, Space to drop, Escape to cancel.`
+        );
+    }
+
+    handleLiftedKey(event) {
+        const id = this.dragId;
+        const c = STATUSES.indexOf(this.dropStatus);
+        const othersIn = (status) => this.columnIssues(status).filter((i) => i.id !== id).length;
+        switch (event.key) {
+            case 'ArrowUp':
+                this.dropIndex = Math.max(0, this.dropIndex - 1);
+                break;
+            case 'ArrowDown':
+                this.dropIndex = Math.min(othersIn(this.dropStatus), this.dropIndex + 1);
+                break;
+            case 'ArrowLeft':
+            case 'ArrowRight': {
+                const nextC = c + (event.key === 'ArrowLeft' ? -1 : 1);
+                if (nextC < 0 || nextC >= STATUSES.length) break;
+                this.dropStatus = STATUSES[nextC];
+                this.dropIndex = Math.min(this.dropIndex, othersIn(this.dropStatus));
+                break;
+            }
+            case ' ':
+            case 'Spacebar':
+            case 'Enter': {
+                event.preventDefault();
+                const issue = this.issues.find((i) => i.id === id);
+                const status = this.dropStatus;
+                const index = this.dropIndex;
+                const text = this.targetText();
+                this.resetDrag();
+                const moved = this.commitMove(id, status, index);
+                this.focusIssue(id);
+                this.announce(moved ? `Dropped ${issue.key}. ${text}.` : `${issue.key} stays where it was.`);
+                return;
+            }
+            case 'Escape':
+            case 'Tab': {
+                if (event.key === 'Escape') event.preventDefault();
+                const issue = this.issues.find((i) => i.id === id);
+                this.resetDrag();
+                this.announce(`Move cancelled. ${issue.key} stays where it was.`);
+                return;
+            }
+            default:
+                return;
+        }
+        event.preventDefault();
+        this.announce(this.targetText());
+    }
+
+    targetText() {
+        const total = this.columnIssues(this.dropStatus).filter((i) => i.id !== this.dragId).length + 1;
+        return `${this.dropStatus}, position ${this.dropIndex + 1} of ${total}`;
+    }
+
+    announce(text) {
+        // A trailing non-breaking space forces screen readers to repeat identical messages
+        this.announcement = this.announcement === text ? text + '\u00a0' : text;
     }
 
     // ---------------------------------------------------------------- Actions
 
+    open(id) {
+        this.dispatchEvent(new CustomEvent('openissue', { detail: { id } }));
+    }
+
     handleCardClick(event) {
-        this.dispatchEvent(
-            new CustomEvent('openissue', {
-                detail: { id: event.currentTarget.dataset.id }
-            })
-        );
+        this.open(event.currentTarget.dataset.id);
     }
 
     handleCreateInColumn(event) {
