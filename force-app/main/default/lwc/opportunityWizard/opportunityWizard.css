@@ -107,7 +107,8 @@
 }
 
 .journey-line {
-    flex: 1;
+    flex: 1 1 1.5rem;
+    min-width: 1.5rem;
     height: 1px;
     background: var(--wizard-border);
 }
@@ -322,4 +323,18 @@
 
 .product-name small {
     color: #587083;
+}
+
+/* Multi-select picklists: a row under the two columns, two side by side */
+.wide-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+    margin-top: 0.25rem;
+}
+
+@media (max-width: 760px) {
+    .wide-grid {
+        grid-template-columns: 1fr;
+    }
 }

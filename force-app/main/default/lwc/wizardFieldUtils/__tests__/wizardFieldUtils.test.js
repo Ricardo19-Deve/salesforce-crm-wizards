@@ -15,7 +15,9 @@ const OBJECT_INFO = {
         Amount: { label: 'Amount', dataType: 'Currency', scale: 2 },
         Region__c: { label: 'Region', dataType: 'Picklist' },
         City__c: { label: 'City', dataType: 'Picklist', controllerName: 'Region__c' },
-        HasOptedOutOfEmail: { label: 'Email Opt Out', dataType: 'Boolean', required: true }
+        HasOptedOutOfEmail: { label: 'Email Opt Out', dataType: 'Boolean', required: true },
+        Interests__c: { label: 'Interests', dataType: 'MultiPicklist' },
+        Channels__c: { label: 'Channels', dataType: 'MultiPicklist' }
     }
 };
 
@@ -97,6 +99,20 @@ describe('buildSections and payload', () => {
         expect(payload([{ apiName: 'Tags__c' }], { Tags__c: ['A', 'B'] })).toEqual({ Tags__c: 'A;B' });
         expect(hasValue([])).toBe(false);
         expect(hasValue(0)).toBe(true);
+    });
+});
+
+describe('wide fields', () => {
+    it('puts multi-select picklists in their own row, left before right', () => {
+        const fields = [
+            resolveField(row('LastName'), OBJECT_INFO),
+            resolveField(row('Channels__c', { columnNumber: 2 }), OBJECT_INFO),
+            resolveField(row('Interests__c'), OBJECT_INFO)
+        ];
+        const [section] = buildSections(fields, 1, { picklistValues: {}, fieldValues: {}, objectInfo: OBJECT_INFO });
+        expect(section.hasWide).toBe(true);
+        expect(section.wideFields.map((f) => f.apiName)).toEqual(['Interests__c', 'Channels__c']);
+        expect(section.columns[0].fields.map((f) => f.apiName)).toEqual(['LastName']);
     });
 });
 
