@@ -1,0 +1,63 @@
+<template>
+    <div class="inbox" onkeydown={handleKeydown}>
+        <button
+            class="icon-btn bell"
+            aria-label={bellLabel}
+            title={bellLabel}
+            aria-expanded={ariaExpanded}
+            onclick={toggle}
+        >
+            <lightning-icon icon-name="utility:notification" size="x-small"></lightning-icon>
+            <template lwc:if={hasUnread}>
+                <span class="count" aria-hidden="true">{badge}</span>
+            </template>
+        </button>
+        <template lwc:if={open}>
+            <div class="scrim" onclick={close}></div>
+            <section class="panel glass" aria-label="Notifications">
+                <div class="panel-head">
+                    <span class="panel-title">Notifications</span>
+                    <template lwc:if={hasUnread}>
+                        <button class="btn btn-link btn-sm" onclick={markAll}>Mark all as read</button>
+                    </template>
+                </div>
+                <template lwc:if={hasItems}>
+                    <ul class="list">
+                        <template for:each={rows} for:item="n">
+                            <li key={n.id}>
+                                <button class={n.cls} data-id={n.id} onclick={handleOpen}>
+                                    <template lwc:if={n.hasActor}>
+                                        <span class="avatar avatar-sm" style={n.actorStyle}>{n.actorInitials}</span>
+                                    </template>
+                                    <template lwc:else>
+                                        <span class="avatar avatar-sm system-avatar">
+                                            <lightning-icon icon-name={n.icon} size="xx-small"></lightning-icon>
+                                        </span>
+                                    </template>
+                                    <span class="item-body">
+                                        <span class="item-message">{n.message}</span>
+                                        <span class="item-meta">
+                                            <lightning-icon icon-name={n.icon} size="xx-small"></lightning-icon>
+                                            {n.type} ·
+                                            <lightning-relative-date-time
+                                                value={n.created}
+                                            ></lightning-relative-date-time>
+                                        </span>
+                                    </span>
+                                    <template lwc:if={n.isUnread}>
+                                        <span class="dot"><span class="sr-only">Unread</span></span>
+                                    </template>
+                                </button>
+                            </li>
+                        </template>
+                    </ul>
+                </template>
+                <template lwc:else>
+                    <p class="empty-text">
+                        You are all caught up. Follow an issue to hear about its comments and status changes.
+                    </p>
+                </template>
+            </section>
+        </template>
+    </div>
+</template>

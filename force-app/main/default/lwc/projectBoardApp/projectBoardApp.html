@@ -65,6 +65,16 @@
                     </nav>
                 </template>
 
+                <div class="nav-section">Workspace</div>
+                <nav class="nav" aria-label="Workspace">
+                    <template for:each={workspaceItems} for:item="item">
+                        <button key={item.view} class={item.cls} data-view={item.view} onclick={handleNav}>
+                            <lightning-icon icon-name={item.icon} size="x-small"></lightning-icon>
+                            <span>{item.label}</span>
+                        </button>
+                    </template>
+                </nav>
+
                 <div class="nav-section">Projects</div>
                 <div class="project-list">
                     <template for:each={projectItems} for:item="p">
@@ -100,6 +110,7 @@
                         <span class="kbd kbd-inline">⌘K</span>
                     </div>
                     <div class="topbar-right">
+                        <c-project-board-inbox onopenitem={handleInboxItem}></c-project-board-inbox>
                         <button class="icon-btn" title="Refresh" onclick={handleRefresh}>
                             <lightning-icon icon-name="utility:refresh" size="x-small"></lightning-icon>
                         </button>
@@ -163,7 +174,24 @@
                         <div class="loading-bar"><span></span></div>
                     </template>
 
-                    <template lwc:if={hasProjects}>
+                    <template lwc:if={isPortfolio}>
+                        <div class="view">
+                            <c-project-board-portfolio
+                                current-project-id={projectId}
+                                onopenproject={handleOpenProject}
+                            ></c-project-board-portfolio>
+                        </div>
+                    </template>
+                    <template lwc:elseif={isRequests}>
+                        <div class="view">
+                            <c-project-board-requests
+                                project={project}
+                                can-manage={canManageMembers}
+                                onprojectchanged={handleRefresh}
+                            ></c-project-board-requests>
+                        </div>
+                    </template>
+                    <template lwc:elseif={hasProjects}>
                         <div class="view">
                             <template lwc:if={isBoard}>
                                 <c-project-board-kanban
@@ -196,6 +224,14 @@
                                     ondeletesprint={handleDeleteSprint}
                                 ></c-project-board-backlog>
                             </template>
+                            <template lwc:elseif={isTimeline}>
+                                <c-project-board-timeline
+                                    issues={issues}
+                                    sprints={sprints}
+                                    project={project}
+                                    onopenissue={handleOpenIssue}
+                                ></c-project-board-timeline>
+                            </template>
                             <template lwc:elseif={isReports}>
                                 <c-project-board-reports
                                     issues={issues}
@@ -215,7 +251,7 @@
                         </div>
                     </template>
 
-                    <template lwc:if={showEmptyState}>
+                    <template lwc:if={showProjectEmptyState}>
                         <div class="empty-state glass">
                             <span class="empty-orb">
                                 <lightning-icon
@@ -226,7 +262,10 @@
                             </span>
                             <h2>Plan, track and release great work</h2>
                             <p>Create your first project to get a board, a backlog and sprints.</p>
-                            <button class="btn btn-primary" onclick={openProjectDialog}>Create project</button>
+                            <div class="empty-actions">
+                                <button class="btn btn-primary" onclick={openProjectDialog}>Create project</button>
+                                <button class="btn btn-subtle" onclick={goToRequests}>Send a request to a team</button>
+                            </div>
                         </div>
                     </template>
                 </div>
@@ -238,6 +277,7 @@
             <c-project-board-issue-detail
                 mode="create"
                 assignable-users={assignableUsers}
+                members={members}
                 defaults={createDefaults}
                 issues={issues}
                 sprints={sprints}
@@ -252,12 +292,14 @@
                 issue-id={selectedIssueId}
                 read-only={readOnly}
                 assignable-users={assignableUsers}
+                members={members}
                 issues={issues}
                 sprints={sprints}
                 project={project}
                 current-user-id={currentUserId}
                 onclose={handleDetailClose}
                 onchanged={handleIssueChanged}
+                onread={refreshInbox}
                 ondeleted={handleIssueDeleted}
                 onopenissue={handleOpenIssue}
                 oncreatechild={handleCreateChild}
@@ -331,15 +373,13 @@
                         </ul>
                         <template lwc:if={canManageMembers}>
                             <div class="add-member">
-                                <lightning-record-picker
+                                <c-project-board-people-picker
                                     class="new-member-picker"
-                                    object-api-name="User"
+                                    project-id={projectId}
                                     label="Add a member"
-                                    variant="label-hidden"
                                     placeholder="Add a person…"
-                                    filter={newMemberFilter}
                                     onchange={handleNewMember}
-                                ></lightning-record-picker>
+                                ></c-project-board-people-picker>
                                 <c-project-board-select
                                     class="role-select"
                                     onchange={handleNewMemberRole}

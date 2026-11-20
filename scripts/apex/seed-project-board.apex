@@ -2,8 +2,9 @@
 // Run after assigning the Project_Board_User permission set to yourself:
 //   sf apex run -o <org> -f scripts/apex/seed-project-board.apex
 // Creates the project "Northwind CRM Rollout" (NW) with a completed sprint, an active sprint, a planned sprint,
-// epics, issues in every status, comments, a BRD waiting for sign-off and test scripts. You become the project
-// lead (the only member): add colleagues from the Members dialog. Safe to re-run: it stops if NW already exists.
+// epics, issues in every status, comments, a BRD waiting for sign-off, test scripts, timeline dates with a
+// milestone and dependencies, an incoming request and a few sample notifications. You become the project lead
+// (the only member): add colleagues from the Members dialog. Safe to re-run: it stops if NW already exists.
 
 if (![SELECT Id FROM PM_Project__c WHERE Key__c = 'NW' LIMIT 1].isEmpty()) {
     System.debug('Project NW already exists - nothing to do.');
@@ -115,4 +116,64 @@ for (PM_Sign_Off__c so : ProjectDocsController.getBrd(offline).Sign_Offs__r) {
         ProjectDocsController.decideSignOff(so.Id, 'Approved', 'Scope matches the sales operations request.');
     }
 }
+// Timeline: start and due dates around today, a milestone and dependencies (one of them a conflict to resolve)
+Map<String, List<Integer>> plan = new Map<String, List<Integer>>{
+    'Deduplicate contacts before load' => new List<Integer>{ -20, -3 },
+    'Validate opportunity currency conversion' => new List<Integer>{ 1, 6 },
+    'Login fails with SSO on iOS' => new List<Integer>{ -4, 1 },
+    'Offline mode for visit reports' => new List<Integer>{ -6, 5 },
+    'Push notifications for approvals' => new List<Integer>{ 2, 8 },
+    'Partner self-registration flow' => new List<Integer>{ 10, 20 },
+    'Deal registration approval' => new List<Integer>{ 21, 28 }
+};
+List<PM_Issue__c> dated = new List<PM_Issue__c>();
+for (String summary : plan.keySet()) {
+    dated.add(new PM_Issue__c(
+        Id = issueIds.get(summary),
+        Start_Date__c = Date.today().addDays(plan.get(summary)[0]),
+        Due_Date__c = Date.today().addDays(plan.get(summary)[1])
+    ));
+}
+update dated;
+Id goLive = ProjectBoardController.saveIssue(new Map<String, Object>{
+    'Project__c' => project.Id, 'Summary__c' => 'Partner portal pilot go-live', 'Type__c' => 'Task',
+    'Epic__c' => epics.get('Partner portal'), 'Sprint__c' => sprint3.Id, 'Milestone__c' => true,
+    'Due_Date__c' => String.valueOf(Date.today().addDays(30))
+}).Id;
+// blocked issue => issue it waits for
+Map<Id, Id> waits = new Map<Id, Id>{
+    issueIds.get('Validate opportunity currency conversion') => issueIds.get('Deduplicate contacts before load'),
+    issueIds.get('Push notifications for approvals') => issueIds.get('Offline mode for visit reports'),
+    issueIds.get('Deal registration approval') => issueIds.get('Partner self-registration flow'),
+    goLive => issueIds.get('Deal registration approval')
+};
+List<PM_Dependency__c> links = new List<PM_Dependency__c>();
+for (Id blocked : waits.keySet()) {
+    links.add(new PM_Dependency__c(
+        Blocked_Issue__c = blocked, Blocking_Issue__c = waits.get(blocked),
+        Dependency_Key__c = String.valueOf(blocked) + String.valueOf(waits.get(blocked))
+    ));
+}
+insert links;
+
+// Requests: the project accepts them, and one is waiting in the backlog
+ProjectPlanController.setAcceptsRequests(project.Id, true);
+ProjectPlanController.submitRequest(project.Id, 'Add a region filter to the visit report list',
+    '<p>Regional managers only want to see the visits of their region.</p>', 'Story', 'High');
+
+// Followers and sample notifications: in a one-person demo org nobody else acts, so these show what the inbox
+// looks like when teammates mention you or move your work (no author: the inbox shows the event icon)
+ProjectActivityController.addFollowers(new Map<Id, Set<Id>>{ offline => new Set<Id>{ me } });
+Map<Id, PM_Issue__c> byId = new Map<Id, PM_Issue__c>([SELECT Id, Name, Summary__c FROM PM_Issue__c WHERE Project__c = :project.Id]);
+PM_Issue__c push = byId.get(issueIds.get('Push notifications for approvals'));
+PM_Issue__c sso = byId.get(issueIds.get('Login fails with SSO on iOS'));
+insert new List<PM_Notification__c>{
+    new PM_Notification__c(OwnerId = me, Type__c = 'Mentioned', Issue__c = offline, Project__c = project.Id,
+        Issue_Key__c = byId.get(offline).Name,
+        Message__c = 'Maria Santos mentioned you in ' + byId.get(offline).Name + ': ' + byId.get(offline).Summary__c),
+    new PM_Notification__c(OwnerId = me, Type__c = 'Status', Issue__c = sso.Id, Project__c = project.Id,
+        Issue_Key__c = sso.Name, Message__c = 'Tomas Novak moved ' + sso.Name + ': ' + sso.Summary__c + ' to In Review'),
+    new PM_Notification__c(OwnerId = me, Type__c = 'Assigned', Issue__c = push.Id, Project__c = project.Id,
+        Issue_Key__c = push.Name, Message__c = 'Maria Santos assigned you ' + push.Name + ': ' + push.Summary__c)
+};
 System.debug('Project Board demo data created: ' + project.Id);

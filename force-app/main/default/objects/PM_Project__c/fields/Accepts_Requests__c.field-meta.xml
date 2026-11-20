@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Accepts_Requests__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>When checked, anyone with the app can submit a request to this project.</description>
+    <label>Accepts Requests</label>
+    <trackHistory>false</trackHistory>
+    <type>Checkbox</type>
+</CustomField>

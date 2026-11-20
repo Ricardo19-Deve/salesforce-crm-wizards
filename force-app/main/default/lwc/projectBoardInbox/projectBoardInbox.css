@@ -1,0 +1,119 @@
+@import 'c/projectBoardStyles';
+
+:host {
+    display: inline-block;
+}
+.inbox {
+    position: relative;
+}
+.bell {
+    position: relative;
+}
+.count {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border: 2px solid var(--jx-glass-strong);
+    border-radius: 999px;
+    background: var(--jx-danger);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 14px;
+    text-align: center;
+}
+.scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+}
+.panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: -60px;
+    z-index: 41;
+    width: 400px;
+    max-height: 520px;
+    overflow: auto;
+    padding: 10px;
+    border-radius: 20px;
+    background: var(--jx-option-bg);
+    box-shadow: var(--jx-shadow-lg);
+}
+.panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px 8px;
+}
+.panel-title {
+    font-weight: 800;
+}
+.list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 8px;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--jx-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.item:hover {
+    background: var(--jx-accent-soft);
+}
+.item:focus-visible {
+    outline: 2px solid var(--jx-accent);
+    outline-offset: -2px;
+}
+.item-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+.item-message {
+    font-size: 13px;
+    line-height: 1.35;
+}
+.unread .item-message {
+    font-weight: 700;
+}
+.item-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--jx-text-muted);
+    font-size: 11px;
+}
+.dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin-top: 6px;
+    border-radius: 50%;
+    background: var(--jx-accent);
+}
+.empty-text {
+    padding: 18px 10px;
+    color: var(--jx-text-subtle);
+    font-size: 13px;
+    text-align: center;
+}
+.system-avatar {
+    background: var(--jx-accent-soft);
+    --slds-c-icon-color-foreground-default: var(--jx-accent-text);
+}

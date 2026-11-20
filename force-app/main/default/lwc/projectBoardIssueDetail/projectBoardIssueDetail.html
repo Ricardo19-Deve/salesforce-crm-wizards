@@ -124,6 +124,16 @@
                             />
                         </div>
                         <div>
+                            <label class="field-label">Start date</label>
+                            <input
+                                class="field-input"
+                                type="date"
+                                data-field="Start_Date__c"
+                                value={form.Start_Date__c}
+                                oninput={handleFormChange}
+                            />
+                        </div>
+                        <div>
                             <label class="field-label">Due date</label>
                             <input
                                 class="field-input"
@@ -276,6 +286,95 @@
                                     </template>
                                 </div>
 
+                                <template lwc:if={showDependencies}>
+                                    <div class="block deps">
+                                        <div class="block-head">
+                                            <h3 class="block-title">Dependencies</h3>
+                                            <template lwc:if={blockedNote}>
+                                                <span class="blocked-note">{blockedNote}</span>
+                                            </template>
+                                        </div>
+                                        <template lwc:if={hasBlockedBy}>
+                                            <div class="dep-group">Blocked by</div>
+                                            <template for:each={blockedByRows} for:item="d">
+                                                <div key={d.dependencyId} class="dep-row">
+                                                    <button class="dep-link" data-id={d.issueId} onclick={openRelated}>
+                                                        <span class={d.keyClass}>{d.key}</span>
+                                                        <span class="child-summary">{d.summary}</span>
+                                                    </button>
+                                                    <span class={d.statusClass}>{d.status}</span>
+                                                    <template lwc:if={canEdit}>
+                                                        <button
+                                                            class="icon-btn dep-remove"
+                                                            data-dep={d.dependencyId}
+                                                            aria-label={d.removeLabel}
+                                                            title={d.removeLabel}
+                                                            onclick={handleRemoveDependency}
+                                                        >
+                                                            <lightning-icon
+                                                                icon-name="utility:close"
+                                                                size="xx-small"
+                                                            ></lightning-icon>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </template>
+                                        <template lwc:if={hasBlocks}>
+                                            <div class="dep-group">Blocks</div>
+                                            <template for:each={blocksRows} for:item="d">
+                                                <div key={d.dependencyId} class="dep-row">
+                                                    <button class="dep-link" data-id={d.issueId} onclick={openRelated}>
+                                                        <span class={d.keyClass}>{d.key}</span>
+                                                        <span class="child-summary">{d.summary}</span>
+                                                    </button>
+                                                    <span class={d.statusClass}>{d.status}</span>
+                                                    <template lwc:if={canEdit}>
+                                                        <button
+                                                            class="icon-btn dep-remove"
+                                                            data-dep={d.dependencyId}
+                                                            aria-label={d.removeLabel}
+                                                            title={d.removeLabel}
+                                                            onclick={handleRemoveDependency}
+                                                        >
+                                                            <lightning-icon
+                                                                icon-name="utility:close"
+                                                                size="xx-small"
+                                                            ></lightning-icon>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </template>
+                                        <template lwc:if={noDependencies}>
+                                            <div class="placeholder">No dependencies.</div>
+                                        </template>
+                                        <template lwc:if={canEdit}>
+                                            <div class="dep-add">
+                                                <c-project-board-select
+                                                    class="dep-kind"
+                                                    label="Kind of dependency"
+                                                    options={depKindOptions}
+                                                    onchange={handleDepKind}
+                                                ></c-project-board-select>
+                                                <c-project-board-select
+                                                    class="dep-target"
+                                                    label="Issue"
+                                                    options={depTargetOptions}
+                                                    onchange={handleDepTarget}
+                                                ></c-project-board-select>
+                                                <button
+                                                    class="btn btn-sm"
+                                                    disabled={depAddDisabled}
+                                                    onclick={handleAddDependency}
+                                                >
+                                                    Add
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+
                                 <template lwc:if={issue.isEpic}>
                                     <div class="block">
                                         <div class="block-head">
@@ -357,6 +456,13 @@
                                                             label="Comment"
                                                         ></lightning-input-rich-text>
                                                         <div class="edit-actions">
+                                                            <c-project-board-select
+                                                                class="mention-select"
+                                                                variant="compact"
+                                                                label="Mention someone"
+                                                                options={mentionOptions}
+                                                                onchange={handleMention}
+                                                            ></c-project-board-select>
                                                             <button
                                                                 class="btn btn-primary btn-sm"
                                                                 disabled={busy}
@@ -482,6 +588,27 @@
                                     options={statusOptions}
                                 ></c-project-board-select>
 
+                                <div class="watch-row">
+                                    <button class={watchClass} aria-pressed={watchPressed} onclick={toggleFollow}>
+                                        <lightning-icon icon-name="utility:preview" size="xx-small"></lightning-icon>
+                                        {watchLabel}
+                                    </button>
+                                    <span class="watchers" title={followerNames}>
+                                        <template for:each={followerAvatars} for:item="f">
+                                            <span key={f.id} class="avatar avatar-xs" style={f.style}
+                                                >{f.initials}</span
+                                            >
+                                        </template>
+                                        <span class="watch-text">{followerText}</span>
+                                    </span>
+                                </div>
+                                <template lwc:if={issue.isRequest}>
+                                    <div class="request-note">
+                                        <lightning-icon icon-name="utility:new" size="xx-small"></lightning-icon>
+                                        Request from {issue.requestedByName}. They are told when the status changes.
+                                    </div>
+                                </template>
+
                                 <div class="details-box">
                                     <div class="details-head">Details</div>
 
@@ -591,6 +718,21 @@
                                     </div>
 
                                     <div class="detail-row">
+                                        <label class="detail-label">Start date</label>
+                                        <div class="detail-value">
+                                            <input
+                                                disabled={readOnly}
+                                                class="field-input"
+                                                type="date"
+                                                aria-label="Start date"
+                                                data-field="Start_Date__c"
+                                                value={issue.startDate}
+                                                onchange={handleDateChange}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div class="detail-row">
                                         <label class="detail-label">Due date</label>
                                         <div class="detail-value">
                                             <input
@@ -598,9 +740,25 @@
                                                 class="field-input"
                                                 type="date"
                                                 aria-label="Due date"
+                                                data-field="Due_Date__c"
                                                 value={issue.dueDate}
                                                 onchange={handleDateChange}
                                             />
+                                        </div>
+                                    </div>
+
+                                    <div class="detail-row">
+                                        <label class="detail-label">Milestone</label>
+                                        <div class="detail-value">
+                                            <label class="switch">
+                                                <input
+                                                    type="checkbox"
+                                                    disabled={readOnly}
+                                                    checked={issue.isMilestone}
+                                                    onchange={handleMilestone}
+                                                />
+                                                <span class="switch-text">Show as a milestone on the timeline</span>
+                                            </label>
                                         </div>
                                     </div>
 

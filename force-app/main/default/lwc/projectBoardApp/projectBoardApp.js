@@ -1,6 +1,7 @@
 /**
- * Shell of the Project Board: sidebar, top bar, theme, routing between Board / Backlog / Issues / Reports, the
- * project, sprint and members dialogs. Loads everything with ProjectBoardController.getBoardData and passes it down.
+ * Shell of the Project Board: sidebar, top bar (search, inbox, theme), routing between the project views (Board /
+ * Backlog / Timeline / Issues / Reports) and the workspace views (Portfolio / Requests), the project, sprint and
+ * members dialogs. Loads everything with ProjectBoardController.getBoardData and passes it down.
  *
  * Where to configure: App Builder / Experience Builder properties (fullScreen, brandName, appName, logoUrl).
  * Gotchas: design tokens (--jx-*) live on .jx-root here and are inherited by every child component; moves are
@@ -23,6 +24,7 @@ import addMember from '@salesforce/apex/ProjectBoardController.addMember';
 import updateMemberRole from '@salesforce/apex/ProjectBoardController.updateMemberRole';
 import removeMember from '@salesforce/apex/ProjectBoardController.removeMember';
 import {
+    applyDependencies,
     decorateIssue,
     reduceErrors,
     avatarStyle,
@@ -38,8 +40,15 @@ const THEME_KEY = 'projectBoard.theme';
 const NAV = [
     { view: 'board', label: 'Board', icon: 'utility:kanban' },
     { view: 'backlog', label: 'Backlog', icon: 'utility:rows' },
+    { view: 'timeline', label: 'Timeline', icon: 'utility:event' },
     { view: 'issues', label: 'Issues', icon: 'utility:table' },
     { view: 'reports', label: 'Reports', icon: 'utility:chart' }
+];
+
+/** Views that are not about one project. */
+const WORKSPACE = [
+    { view: 'portfolio', label: 'Portfolio', icon: 'utility:layers' },
+    { view: 'requests', label: 'Requests', icon: 'utility:new' }
 ];
 
 const DURATIONS = [
@@ -99,6 +108,7 @@ export default class ProjectBoardApp extends LightningElement {
     project;
     sprints = [];
     issues = [];
+    dependencies = [];
     currentUserId;
     currentUserName = '';
     members = [];
@@ -165,6 +175,9 @@ export default class ProjectBoardApp extends LightningElement {
                 this.project = null;
                 this.issues = [];
                 this.sprints = [];
+                this.dependencies = [];
+                // Without projects the user can still ask other teams for things
+                if (!this.isWorkspaceView) this.view = 'requests';
             }
         } catch (e) {
             this.toastError('Could not load projects', e);
@@ -187,7 +200,11 @@ export default class ProjectBoardApp extends LightningElement {
             this.canEdit = data.canEdit !== false;
             this.canManageMembers = data.canManageMembers === true;
             const stats = data.stats || {};
-            this.issues = (data.issues || []).map((r) => decorateIssue(r, stats[r.Id]));
+            this.dependencies = data.dependencies || [];
+            this.issues = applyDependencies(
+                (data.issues || []).map((r) => decorateIssue(r, stats[r.Id])),
+                this.dependencies
+            );
         } catch (e) {
             this.toastError('Could not load project', e);
         }
@@ -247,19 +264,6 @@ export default class ProjectBoardApp extends LightningElement {
         }));
     }
 
-    get newMemberFilter() {
-        const criteria = [
-            { fieldPath: 'IsActive', operator: 'eq', value: true },
-            { fieldPath: 'UserType', operator: 'eq', value: 'Standard' }
-        ];
-        const ids = this.members.map((m) => m.userId);
-        if (ids.length) criteria.push({ fieldPath: 'Id', operator: 'nin', value: ids });
-        return {
-            criteria,
-            filterLogic: criteria.map((c, i) => i + 1).join(' AND ')
-        };
-    }
-
     get newRoleOptions() {
         return ['Lead', 'Member', 'Viewer'].map((r) => ({
             value: r,
@@ -284,7 +288,7 @@ export default class ProjectBoardApp extends LightningElement {
     }
 
     handleNewMember(event) {
-        this.newMemberId = event.detail.recordId || null;
+        this.newMemberId = event.detail.userId || null;
     }
 
     handleNewMemberRole(event) {
@@ -300,7 +304,7 @@ export default class ProjectBoardApp extends LightningElement {
             });
             this.newMemberId = null;
             const picker = this.template.querySelector('.new-member-picker');
-            if (picker && picker.clearSelection) picker.clearSelection();
+            if (picker) picker.clear();
             if (added && !added.hasPermission) {
                 this.toast(
                     `${added.name} was added`,
@@ -414,6 +418,10 @@ export default class ProjectBoardApp extends LightningElement {
         return this.loaded && !this.projects.length;
     }
 
+    get showProjectEmptyState() {
+        return this.showEmptyState && !this.isWorkspaceView;
+    }
+
     get projectKey() {
         return this.project ? this.project.Key__c : '';
     }
@@ -438,6 +446,29 @@ export default class ProjectBoardApp extends LightningElement {
             count: counts[n.view] || null,
             cls: 'nav-item' + (n.view === this.view ? ' active' : '')
         }));
+    }
+
+    get workspaceItems() {
+        return WORKSPACE.map((n) => ({
+            ...n,
+            cls: 'nav-item' + (n.view === this.view ? ' active' : '')
+        }));
+    }
+
+    get isWorkspaceView() {
+        return WORKSPACE.some((n) => n.view === this.view);
+    }
+
+    get isPortfolio() {
+        return this.view === 'portfolio';
+    }
+
+    get isRequests() {
+        return this.view === 'requests';
+    }
+
+    get isTimeline() {
+        return this.view === 'timeline';
     }
 
     get projectItems() {
@@ -503,6 +534,7 @@ export default class ProjectBoardApp extends LightningElement {
 
     async handleProjectSelect(event) {
         const id = event.currentTarget.dataset.id;
+        if (this.isWorkspaceView) this.view = 'board';
         if (id === this.projectId) return;
         this.projectId = id;
         this.selectedIssueId = null;
@@ -510,6 +542,50 @@ export default class ProjectBoardApp extends LightningElement {
         this.loading = true;
         await this.loadBoard();
         this.loading = false;
+    }
+
+    /** Portfolio card: open that project's board. */
+    async handleOpenProject(event) {
+        const id = event.detail.id;
+        this.view = 'board';
+        if (id === this.projectId) return;
+        await this.switchProject(id);
+    }
+
+    async switchProject(id) {
+        this.projectId = id;
+        this.selectedIssueId = null;
+        store(STORAGE_KEY, id);
+        this.loading = true;
+        await this.loadBoard();
+        this.loading = false;
+    }
+
+    /** Inbox: open the issue (switching project if needed), or the Requests view for requests the user cannot open. */
+    async handleInboxItem(event) {
+        const { issueId, projectId } = event.detail;
+        const visible = projectId && this.projects.some((p) => p.Id === projectId);
+        if (!visible || !issueId) {
+            this.view = 'requests';
+            return;
+        }
+        if (this.isWorkspaceView) this.view = 'board';
+        if (projectId !== this.projectId) await this.switchProject(projectId);
+        if (this.issues.some((i) => i.id === issueId)) {
+            this.createOpen = false;
+            this.selectedIssueId = issueId;
+        } else {
+            this.toast('This issue no longer exists', '', 'info');
+        }
+    }
+
+    refreshInbox() {
+        const inbox = this.template.querySelector('c-project-board-inbox');
+        if (inbox) inbox.refresh();
+    }
+
+    goToRequests() {
+        this.view = 'requests';
     }
 
     handleGlobalSearch(event) {
@@ -534,6 +610,9 @@ export default class ProjectBoardApp extends LightningElement {
 
     handleRefresh() {
         this.loading = true;
+        this.refreshInbox();
+        const portfolio = this.template.querySelector('c-project-board-portfolio');
+        if (portfolio) portfolio.load();
         this.loadBoard().then(() => {
             this.loading = false;
         });

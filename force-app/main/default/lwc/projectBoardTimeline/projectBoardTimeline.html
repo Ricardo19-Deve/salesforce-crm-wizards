@@ -1,0 +1,166 @@
+<template>
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb">Projects / {projectName}</div>
+            <h1 class="page-title">Timeline</h1>
+            <div class="page-sub">Start and due dates, milestones and dependencies</div>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="segmented" role="group" aria-label="Zoom">
+            <button class={weekClass} aria-pressed={weekPressed} onclick={setWeek}>Weeks</button>
+            <button class={monthClass} aria-pressed={monthPressed} onclick={setMonth}>Months</button>
+        </div>
+        <button class="btn btn-subtle btn-sm" onclick={scrollToToday}>Today</button>
+        <label class="switch">
+            <input type="checkbox" checked={hideDone} onchange={toggleDone} />
+            <span>Hide done</span>
+        </label>
+        <div class="legend" aria-label="Status colours">
+            <span class="legend-item"><span class="swatch tone-todo"></span>To Do</span>
+            <span class="legend-item"><span class="swatch tone-progress"></span>In Progress</span>
+            <span class="legend-item"><span class="swatch tone-review"></span>In Review</span>
+            <span class="legend-item"><span class="swatch tone-done"></span>Done</span>
+            <span class="legend-item"><span class="legend-diamond"></span>Milestone</span>
+            <span class="legend-item"><span class="legend-sprint"></span>Sprint dates</span>
+        </div>
+        <template lwc:if={hasConflicts}>
+            <span class="conflict-pill" role="status">⚠ {conflictLabel}</span>
+        </template>
+    </div>
+
+    <template lwc:if={hasRows}>
+        <section class="timeline glass" aria-label="Timeline">
+            <div class="scroller">
+                <!-- Header -->
+                <div class="head-row">
+                    <div class="corner">Issue</div>
+                    <div class="head-track" style={trackStyle}>
+                        <div class="months">
+                            <template for:each={chart.months} for:item="mo">
+                                <span key={mo.key} class="month" style={mo.style}>{mo.label}</span>
+                            </template>
+                        </div>
+                        <div class="ticks">
+                            <template for:each={chart.ticks} for:item="t">
+                                <span key={t.key} class={t.cls} style={t.style}>{t.label}</span>
+                            </template>
+                        </div>
+                        <div class="sprints">
+                            <template for:each={chart.sprintBands} for:item="s">
+                                <span key={s.key} class={s.cls} style={s.style} title={s.label}>{s.label}</span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rows -->
+                <div class="body">
+                    <div class="labels">
+                        <template for:each={chart.rows} for:item="r">
+                            <div key={r.key} class={r.rowClass}>
+                                <template lwc:if={r.isGroup}>
+                                    <span class="group-label">{r.summary}</span>
+                                </template>
+                                <template lwc:else>
+                                    <button class={r.labelClass} data-id={r.id} onclick={open} title={r.summary}>
+                                        <template lwc:if={r.isEpic}>
+                                            <span class="epic-dot" style={r.epicStyle}></span>
+                                        </template>
+                                        <span class="label-key">{r.issueKey}</span>
+                                        <span class="label-summary">{r.summary}</span>
+                                        <template lwc:if={r.isBlocked}>
+                                            <span class="blocked-tag">Blocked</span>
+                                        </template>
+                                    </button>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                    <div class="canvas" style={canvasStyle}>
+                        <template for:each={chart.weekends} for:item="w">
+                            <span key={w.key} class="weekend" style={w.style}></span>
+                        </template>
+                        <span class="today" style={chart.todayStyle}><span class="today-label">Today</span></span>
+                        <template for:each={chart.rows} for:item="r">
+                            <div key={r.key} class={r.rowClass}>
+                                <template lwc:if={r.hasBar}>
+                                    <template lwc:if={r.isMilestone}>
+                                        <span
+                                            class={r.diamondClass}
+                                            style={r.diamondStyle}
+                                            role="button"
+                                            tabindex="-1"
+                                            aria-label={r.ariaLabel}
+                                            title={r.title}
+                                            data-id={r.id}
+                                            onclick={open}
+                                        ></span>
+                                        <span class="milestone-label" style={r.milestoneLabelStyle}
+                                            >{r.issueKey} · {r.summary}</span
+                                        >
+                                    </template>
+                                    <template lwc:else>
+                                        <span
+                                            class={r.barClass}
+                                            style={r.barStyle}
+                                            role="button"
+                                            tabindex="-1"
+                                            aria-label={r.ariaLabel}
+                                            title={r.title}
+                                            data-id={r.id}
+                                            onclick={open}
+                                            ><span class="bar-text">{r.barText}</span></span
+                                        >
+                                    </template>
+                                </template>
+                            </div>
+                        </template>
+                        <svg class="arrows" width={svgWidth} height={svgHeight} aria-hidden="true">
+                            <template for:each={chart.arrows} for:item="a">
+                                <g key={a.key} class={a.cls}>
+                                    <path class="arrow-line" d={a.d}></path>
+                                    <path class="arrow-head" d={a.head}></path>
+                                </g>
+                            </template>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <template lwc:if={hasConflicts}>
+            <section class="panel glass conflicts" aria-label="Dependency conflicts">
+                <div class="panel-title">⚠ {conflictLabel}</div>
+                <ul>
+                    <template for:each={chart.conflicts} for:item="c">
+                        <li key={c.key}>
+                            <button class="btn btn-link btn-sm" data-id={c.id} onclick={open}>{c.text}</button>
+                        </li>
+                    </template>
+                </ul>
+            </section>
+        </template>
+    </template>
+    <template lwc:else>
+        <div class="empty glass">
+            <h2>Nothing on the timeline yet</h2>
+            <p>Give issues a start and a due date, or start a sprint with dates, to see them here.</p>
+        </div>
+    </template>
+
+    <template lwc:if={hasUnscheduled}>
+        <section class="panel glass unscheduled" aria-label="Not on the timeline">
+            <div class="panel-title">Not on the timeline ({chart.unscheduled.length})</div>
+            <p class="panel-sub">No dates and no sprint with dates. Open an issue to set its start and due date.</p>
+            <div class="chips">
+                <template for:each={chart.unscheduled} for:item="u">
+                    <button key={u.id} class="chip" data-id={u.id} onclick={open}>
+                        <span class="label-key">{u.key}</span> {u.summary}
+                    </button>
+                </template>
+            </div>
+        </section>
+    </template>
+</template>

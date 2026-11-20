@@ -1,5 +1,6 @@
 import {
     addDaysIso,
+    applyDependencies,
     daysBetween,
     decorateIssue,
     exportUrl,
@@ -82,5 +83,36 @@ describe('small helpers', () => {
     it('builds Lightning Experience URLs outside an Experience Cloud site', () => {
         expect(exportUrl('ProjectSprintReport', 'a02', 'word')).toBe('/apex/ProjectSprintReport?id=a02&format=word');
         expect(fileDownloadUrl('069x')).toBe('/sfc/servlet.shepherd/document/download/069x');
+    });
+    it('marks issues blocked while what they wait for is open', () => {
+        const issue = (id, status) => decorateIssue({ ...RECORD, Id: id, Name: id, Status__c: status });
+        const issues = [issue('A', 'In Progress'), issue('B', 'To Do'), issue('C', 'Done'), issue('D', 'To Do')];
+        const result = applyDependencies(issues, [
+            { id: 'd1', blockedId: 'B', blockingId: 'A' },
+            { id: 'd2', blockedId: 'D', blockingId: 'C' },
+            { id: 'd3', blockedId: 'X', blockingId: 'A' }
+        ]);
+        const byId = Object.fromEntries(result.map((i) => [i.id, i]));
+        expect(byId.B.isBlocked).toBe(true);
+        expect(byId.B.blockedBy).toEqual([{ dependencyId: 'd1', issueId: 'A' }]);
+        expect(byId.A.blocks).toEqual([{ dependencyId: 'd1', issueId: 'B' }]);
+        expect(byId.D.isBlocked).toBe(false);
+        expect(byId.D.openBlockers).toBe(0);
+        expect(issues[1].blockedBy).toEqual([]);
+    });
+
+    it('reads timeline dates, milestones and requests from the record', () => {
+        const vm = decorateIssue({
+            ...RECORD,
+            Start_Date__c: '2026-12-01',
+            Due_Date__c: '2026-12-10',
+            Milestone__c: true,
+            Requested_By__c: '005000000000009',
+            Requested_By__r: { Name: 'Tomas Novak' }
+        });
+        expect(vm.startDate).toBe('2026-12-01');
+        expect(vm.isMilestone).toBe(true);
+        expect(vm.isRequest).toBe(true);
+        expect(vm.requestedByName).toBe('Tomas Novak');
     });
 });

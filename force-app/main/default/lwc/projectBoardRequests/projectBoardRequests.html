@@ -1,0 +1,120 @@
+<template>
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb">Workspace</div>
+            <h1 class="page-title">Requests</h1>
+            <div class="page-sub">Ask a project team for a change, a fix or anything else</div>
+        </div>
+    </div>
+
+    <template lwc:if={showIntakeSwitch}>
+        <section class="panel glass intake" aria-label="Requests for this project">
+            <label class="switch">
+                <input type="checkbox" checked={accepts} onchange={toggleIntake} />
+                <span class="intake-title">{project.Name} accepts requests</span>
+            </label>
+            <p class="panel-sub">{intakeText}</p>
+        </section>
+    </template>
+
+    <template lwc:if={error}>
+        <div class="form-error" role="alert">{error}</div>
+    </template>
+
+    <div class="layout">
+        <section class="panel glass" aria-label="New request">
+            <h2 class="panel-title">New request</h2>
+            <template lwc:if={hasProjects}>
+                <form class="form-stack" onsubmit={handleSubmit}>
+                    <div>
+                        <label class="field-label">Project</label>
+                        <c-project-board-select
+                            data-field="projectId"
+                            label="Project"
+                            options={projectOptions}
+                            onchange={handleField}
+                        ></c-project-board-select>
+                    </div>
+                    <div class="two">
+                        <div>
+                            <label class="field-label">What do you need?</label>
+                            <c-project-board-select
+                                data-field="type"
+                                label="Kind of request"
+                                options={typeOptions}
+                                onchange={handleField}
+                            ></c-project-board-select>
+                        </div>
+                        <div>
+                            <label class="field-label">Priority</label>
+                            <c-project-board-select
+                                data-field="priority"
+                                label="Priority"
+                                options={priorityOptions}
+                                onchange={handleField}
+                            ></c-project-board-select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="field-label" for="req-summary">Summary <span class="req">*</span></label>
+                        <input
+                            id="req-summary"
+                            class="field-input"
+                            type="text"
+                            maxlength="255"
+                            placeholder="One line, e.g. Add the region to the visit report"
+                            data-field="summary"
+                            value={form.summary}
+                            oninput={handleField}
+                        />
+                    </div>
+                    <div>
+                        <label class="field-label" for="req-description">Details</label>
+                        <textarea
+                            id="req-description"
+                            class="field-textarea"
+                            rows="5"
+                            placeholder="Who is affected, why it matters, any deadline"
+                            data-field="description"
+                            data-text={form.description}
+                            oninput={handleField}
+                        ></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" disabled={submitDisabled}>Send request</button>
+                    </div>
+                </form>
+            </template>
+            <template lwc:else>
+                <p class="panel-sub">
+                    No project accepts requests at the moment. Ask a project lead to open their project to requests.
+                </p>
+            </template>
+        </section>
+
+        <section class="panel glass" aria-label="My requests">
+            <h2 class="panel-title">My requests</h2>
+            <template lwc:if={hasMine}>
+                <ul class="mine">
+                    <template for:each={mine} for:item="r">
+                        <li key={r.id} class="mine-row">
+                            <div class="mine-head">
+                                <span class="issue-key">{r.key}</span>
+                                <span class="mine-summary">{r.summary}</span>
+                                <span class={r.statusClass}>{r.status}</span>
+                            </div>
+                            <div class="mine-meta">
+                                {r.projectName} · {r.plan} · {r.who} · updated&nbsp;<lightning-relative-date-time
+                                    value={r.updated}
+                                ></lightning-relative-date-time>
+                            </div>
+                        </li>
+                    </template>
+                </ul>
+            </template>
+            <template lwc:else>
+                <p class="panel-sub">Requests you send will appear here.</p>
+            </template>
+        </section>
+    </div>
+</template>

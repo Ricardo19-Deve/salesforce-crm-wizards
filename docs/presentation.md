@@ -53,7 +53,7 @@ Follow the "Demo script" in the README:
 
 - **The problem.** Salesforce delivery teams keep requirements in Word, tests in Excel and the backlog in another tool. The links between them get lost.
 - **The answer.** One app where each issue carries its BRD, its test scripts and its evidence, and every sprint produces a report that is ready to present.
-- **Demo.** Follow the demo script in [project-board.md](project-board.md#demo-script-5-minutes). The strongest moments are dragging a card while the progress ring updates, **Generate from BRD**, and the sprint report PDF.
+- **Demo.** Follow the demo script in [project-board.md](project-board.md#demo-script-10-minutes). The strongest moments are dragging a card while the progress ring updates, **Generate from BRD**, the red conflict on the timeline, and the sprint report PDF.
 - **Engineering points.**
   - Fractional ranks: one update per drag & drop.
   - Sprint snapshots, so "committed vs delivered" survives carry-over.

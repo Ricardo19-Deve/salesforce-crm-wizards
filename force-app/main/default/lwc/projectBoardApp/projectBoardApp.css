@@ -48,6 +48,7 @@
     --jx-done-bg: rgba(34, 197, 94, 0.16);
     --jx-done-fg: #15803d;
     --jx-danger-text: #c81e3c;
+    --jx-warn-fg: #b45309;
     --jx-bg-base: linear-gradient(160deg, #eef3ff 0%, #f6f1ff 45%, #eefaf6 100%);
     --jx-blob-1: #7aa2ff;
     --jx-blob-2: #c59bff;
@@ -95,6 +96,7 @@
     --jx-done-bg: rgba(34, 197, 94, 0.2);
     --jx-done-fg: #86efac;
     --jx-danger-text: #ff8fa3;
+    --jx-warn-fg: #fbbf24;
     --jx-bg-base: linear-gradient(160deg, #070b1d 0%, #0d1030 50%, #071a1f 100%);
     --jx-blob-1: #2f5bff;
     --jx-blob-2: #8b3dff;
@@ -116,7 +118,7 @@
     --slds-c-input-radius-border: 12px;
     --slds-c-input-shadow-focus: 0 0 0 4px var(--jx-accent-ring);
     --slds-g-color-neutral-base-100: var(--jx-option-bg);
-    /* Selected value of a record picker (read-only input + inset ring), in Lightning and in LWR sites */
+    /* Base components (rich text editor) follow the theme in Lightning and in LWR sites */
     --slds-g-color-neutral-base-10: var(--jx-text);
     --slds-g-color-border-base-1: var(--jx-glass-border);
     --slds-g-color-surface-container-1: var(--jx-option-bg);
@@ -748,7 +750,13 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) 120px auto;
     gap: 8px;
-    align-items: center;
+    /* Top: the suggestion list opens below the search without moving the role and the button */
+    align-items: start;
+}
+/* Search, role and button share one height so the row lines up */
+.add-member .role-select,
+.add-member .btn {
+    height: 38px;
 }
 .focus-sentinel {
     position: absolute;
@@ -774,4 +782,11 @@
 }
 .role-legend span {
     color: var(--jx-text-subtle);
+}
+
+.empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
 }

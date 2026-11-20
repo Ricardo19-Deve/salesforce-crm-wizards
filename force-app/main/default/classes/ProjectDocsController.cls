@@ -35,8 +35,6 @@ public with sharing class ProjectDocsController {
         new List<String>{ 'Solution Designer', 'Solution Design' },
         new List<String>{ 'Solution Reviewer', 'Solution Design' }
     };
-    private static final String NOTIFICATION_TYPE = 'Project_Board_Sign_Off';
-    private static final String APP_TAB = 'Project_Board';
 
     private static final Set<String> REQUIREMENT_FIELDS = new Set<String>{
         'requirement__c', 'acceptance_criteria__c', 'systems_impacted__c', 'additional_info__c',
@@ -438,25 +436,24 @@ public with sharing class ProjectDocsController {
         return (String.isBlank(brd.PBI_ID__c) ? '' : brd.PBI_ID__c + ' ') + brd.Name;
     }
 
-    /** Bell notification that opens the project board app. Never blocks the business action. */
-    private static void notify(Set<String> userIds, Id targetId, String title, String body) {
-        userIds.remove(null);
-        if (userIds.isEmpty()) {
-            return;
-        }
+    /** Inbox and bell notification about a BRD (see ProjectActivityController). Never blocks the business action. */
+    private static void notify(Set<String> userIds, Id brdId, String title, String body) {
         try {
-            List<CustomNotificationType> types = [
-                SELECT Id FROM CustomNotificationType WHERE DeveloperName = :NOTIFICATION_TYPE LIMIT 1
-            ];
-            if (types.isEmpty()) {
-                return;
+            PM_BRD__c brd = [SELECT Issue__c, Issue__r.Name, Issue__r.Summary__c, Issue__r.Project__c FROM PM_BRD__c WHERE Id = :brdId];
+            PM_Issue__c issue = new PM_Issue__c(
+                Id = brd.Issue__c, Name = brd.Issue__r.Name, Summary__c = brd.Issue__r.Summary__c, Project__c = brd.Issue__r.Project__c
+            );
+            List<ProjectActivityController.Item> items = new List<ProjectActivityController.Item>();
+            for (String userId : userIds) {
+                if (userId != null) {
+                    ProjectActivityController.Item item = new ProjectActivityController.Item(
+                        Id.valueOf(userId), ProjectActivityController.TYPE_SIGN_OFF, issue, title
+                    );
+                    item.detail = body;
+                    items.add(item);
+                }
             }
-            Messaging.CustomNotification n = new Messaging.CustomNotification();
-            n.setNotificationTypeId(types[0].Id);
-            n.setTitle(title.left(250));
-            n.setBody(body.left(750));
-            n.setTargetPageRef('{"type":"standard__navItemPage","attributes":{"apiName":"' + APP_TAB + '"}}');
-            n.send(userIds);
+            ProjectActivityController.deliver(items);
         } catch (Exception e) {
             System.debug(LoggingLevel.WARN, 'Sign-off notification not sent: ' + e.getMessage());
         }

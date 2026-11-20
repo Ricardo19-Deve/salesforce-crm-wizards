@@ -1,0 +1,60 @@
+<template>
+    <div class={wrapClass}>
+        <template lwc:if={selected}>
+            <span class="avatar avatar-xs chosen" style={selectedStyle}>{selectedInitials}</span>
+        </template>
+        <template lwc:else>
+            <lightning-icon class="search-icon" icon-name="utility:search" size="x-small"></lightning-icon>
+        </template>
+        <input
+            class="field"
+            type="text"
+            role="combobox"
+            autocomplete="off"
+            aria-autocomplete="list"
+            aria-controls="people-list"
+            aria-expanded={ariaExpanded}
+            aria-activedescendant={activeDescendant}
+            aria-label={label}
+            placeholder={placeholder}
+            oninput={handleInput}
+            onkeydown={handleKeydown}
+            onblur={handleBlur}
+        />
+        <template lwc:if={selected}>
+            <button class="clear" type="button" aria-label="Clear the choice" title="Clear" onclick={clearChoice}>
+                <lightning-icon icon-name="utility:close" size="xx-small"></lightning-icon>
+            </button>
+        </template>
+    </div>
+    <template lwc:if={showList}>
+        <ul id="people-list" class="list" role="listbox" aria-label={label}>
+            <template lwc:if={hasResults}>
+                <template for:each={options} for:item="o">
+                    <li
+                        key={o.id}
+                        id={o.domId}
+                        class={o.cls}
+                        role="option"
+                        aria-selected={o.ariaSelected}
+                        data-index={o.index}
+                        onmousedown={handleOptionDown}
+                        onclick={handleOptionClick}
+                        onmouseenter={handleHover}
+                    >
+                        <span class="avatar avatar-xs" style={o.style}>{o.initials}</span>
+                        <span class="person">
+                            <span class="name">{o.name}</span>
+                            <template lwc:if={o.title}>
+                                <span class="title">{o.title}</span>
+                            </template>
+                        </span>
+                    </li>
+                </template>
+            </template>
+            <template lwc:else>
+                <li class="empty" role="option" aria-disabled="true">{emptyText}</li>
+            </template>
+        </ul>
+    </template>
+</template>

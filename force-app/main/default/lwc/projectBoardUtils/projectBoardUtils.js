@@ -200,7 +200,16 @@ export function decorateIssue(r, stats) {
         reporterInitials: initials(reporterName),
         reporterStyle: r.Reporter__c ? avatarStyle(r.Reporter__c) : '',
         dueDate: r.Due_Date__c || null,
+        startDate: r.Start_Date__c || null,
         overdue: !!r.Due_Date__c && !isDone && r.Due_Date__c < todayIso(),
+        isMilestone: r.Milestone__c === true,
+        isRequest: !!r.Requested_By__c,
+        requestedById: r.Requested_By__c || null,
+        requestedByName: r.Requested_By__r ? r.Requested_By__r.Name : '',
+        blockedBy: [],
+        blocks: [],
+        openBlockers: 0,
+        isBlocked: false,
         labels: (r.Labels__c || '')
             .split(',')
             .map((l) => l.trim())
@@ -220,6 +229,34 @@ export function decorateIssue(r, stats) {
         stats: st,
         raw: r
     };
+}
+
+/**
+ * Adds the dependency links to the issue view models: blockedBy / blocks hold issue ids, and an issue is blocked
+ * while at least one of the issues it waits for is not done.
+ */
+export function applyDependencies(issues, dependencies) {
+    const byId = new Map(issues.map((i) => [i.id, i]));
+    const result = issues.map((i) => ({
+        ...i,
+        blockedBy: [],
+        blocks: [],
+        openBlockers: 0,
+        isBlocked: false
+    }));
+    const index = new Map(result.map((i) => [i.id, i]));
+    (dependencies || []).forEach((d) => {
+        const blocked = index.get(d.blockedId);
+        const blocking = index.get(d.blockingId);
+        if (!blocked || !blocking) return;
+        blocked.blockedBy.push({ dependencyId: d.id, issueId: d.blockingId });
+        blocking.blocks.push({ dependencyId: d.id, issueId: d.blockedId });
+        if (!byId.get(d.blockingId).isDone) blocked.openBlockers += 1;
+    });
+    result.forEach((i) => {
+        i.isBlocked = i.openBlockers > 0 && !i.isDone;
+    });
+    return result;
 }
 
 /** lightning-relative-date-time / formatted-date-time need a timestamp: ISO strings from Apex render as "Invalid date". */

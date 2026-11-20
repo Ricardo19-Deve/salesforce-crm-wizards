@@ -1,0 +1,142 @@
+<template>
+    <div class="page-header">
+        <div>
+            <div class="breadcrumb">Workspace</div>
+            <h1 class="page-title">Portfolio</h1>
+            <div class="page-sub">All the projects you work on, at a glance</div>
+        </div>
+        <button class="btn btn-subtle" onclick={load} disabled={loading}>Refresh</button>
+    </div>
+
+    <template lwc:if={error}>
+        <div class="form-error" role="alert">{error}</div>
+    </template>
+
+    <template lwc:if={hasProjects}>
+        <div class="tiles">
+            <div class="tile glass">
+                <span class="tile-value">{totals.projects}</span>
+                <span class="tile-label">Projects</span>
+            </div>
+            <div class="tile glass">
+                <span class="tile-value">{totals.onTrack}</span>
+                <span class="tile-label"><span class="dot dot-ok">✓</span>On track</span>
+            </div>
+            <div class="tile glass">
+                <span class="tile-value">{totals.atRisk}</span>
+                <span class="tile-label"><span class="dot dot-risk">!</span>At risk</span>
+            </div>
+            <div class="tile glass">
+                <span class="tile-value">{totals.offTrack}</span>
+                <span class="tile-label"><span class="dot dot-off">✕</span>Off track</span>
+            </div>
+            <div class="tile glass">
+                <span class="tile-value">{totals.overdue}</span>
+                <span class="tile-label">Overdue issues</span>
+            </div>
+            <div class="tile glass">
+                <span class="tile-value">{totals.blocked}</span>
+                <span class="tile-label">Blocked issues</span>
+            </div>
+            <div class="tile glass">
+                <span class="tile-value">{totals.requests}</span>
+                <span class="tile-label">Requests to triage</span>
+            </div>
+            <div class="tile glass">
+                <span class="tile-value">{totals.signOffs}</span>
+                <span class="tile-label">BRDs awaiting sign-off</span>
+            </div>
+        </div>
+
+        <ul class="cards" aria-label="Projects">
+            <template for:each={projects} for:item="p">
+                <li key={p.id} class={p.cardClass}>
+                    <div class="card-head">
+                        <span class="project-avatar" style={p.avatarStyle}>{p.initial}</span>
+                        <div class="card-title">
+                            <button class="project-link" data-id={p.id} onclick={openProject} aria-label={p.openLabel}>
+                                {p.name}
+                            </button>
+                            <div class="card-sub">
+                                {p.key} · Lead: {p.leadsText} · You: {p.roleText} · {p.membersText}
+                            </div>
+                        </div>
+                        <span class={p.healthClass}><span aria-hidden="true">{p.healthIcon}</span>{p.health}</span>
+                    </div>
+
+                    <template lwc:if={p.hasReasons}>
+                        <ul class="reasons">
+                            <template for:each={p.reasons} for:item="reason">
+                                <li key={reason}>{reason}</li>
+                            </template>
+                        </ul>
+                    </template>
+
+                    <div class="sprint">
+                        <template lwc:if={p.hasSprint}>
+                            <div class="sprint-line">
+                                <span class="sprint-name">{p.sprintName}</span>
+                                <span class="sprint-dates">{p.sprintDates}</span>
+                                <span class="sprint-points">{p.pointsText}</span>
+                            </div>
+                            <div class="meter" role="img" aria-label={p.progressLabel} title={p.progressLabel}>
+                                <span class="meter-fill" style={p.progressStyle}></span>
+                                <span class="meter-time" style={p.timeStyle}></span>
+                            </div>
+                            <div class="meter-legend">
+                                <span>{p.progressText} done</span>
+                                <span class="time-key">│ time elapsed</span>
+                            </div>
+                        </template>
+                        <template lwc:else>
+                            <span class="muted">No active sprint</span>
+                        </template>
+                    </div>
+
+                    <dl class="figures">
+                        <div>
+                            <dt>Open</dt>
+                            <dd class="num">{p.open}</dd>
+                        </div>
+                        <div>
+                            <dt>Overdue</dt>
+                            <dd class={p.overdueClass}>{p.overdue}</dd>
+                        </div>
+                        <div>
+                            <dt>Blocked</dt>
+                            <dd class={p.blockedClass}>{p.blocked}</dd>
+                        </div>
+                        <div>
+                            <dt>Requests</dt>
+                            <dd class={p.requestsClass}>{p.requests}</dd>
+                        </div>
+                        <div>
+                            <dt>Sign-offs</dt>
+                            <dd class={p.signOffClass}>{p.signOffsPending}</dd>
+                        </div>
+                    </dl>
+
+                    <div class="milestone">
+                        <span class="cell-label">Next milestone</span>
+                        <template lwc:if={p.hasMilestone}>
+                            <span class={p.milestoneClass}
+                                ><span class="diamond" aria-hidden="true"></span> {p.milestoneText} ·
+                                {p.milestoneName}</span
+                            >
+                        </template>
+                        <template lwc:else>
+                            <span class="muted">None planned</span>
+                        </template>
+                    </div>
+                </li>
+            </template>
+        </ul>
+    </template>
+
+    <template lwc:if={showEmpty}>
+        <div class="empty glass">
+            <h2>No projects yet</h2>
+            <p>Projects you are a member of appear here. To ask a team for something, use Requests.</p>
+        </div>
+    </template>
+</template>
