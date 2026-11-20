@@ -121,17 +121,19 @@ export function decorateField(field, { picklistValues, fieldValues, objectInfo }
     return decorated;
 }
 
-// Groups the fields of one page into sections with a left and a right column.
+// Groups the fields of one page into sections with a left and a right column. Multi-select picklists are wide:
+// they get their own row under the columns (wideFields), two side by side.
 export function buildSections(fields, page, context) {
     const groups = new Map();
     fields.forEach((field) => {
         if (page !== undefined && field.pageNumber !== page) return;
         if (!groups.has(field.section)) {
-            groups.set(field.section, { name: field.section, order: field.sectionOrder, left: [], right: [] });
+            groups.set(field.section, { name: field.section, order: field.sectionOrder, left: [], right: [], wide: [] });
         }
         const group = groups.get(field.section);
         const decorated = decorateField(field, context);
-        if (field.columnNumber === 2) group.right.push(decorated);
+        if (field.isMultiPicklist) group.wide.push(decorated);
+        else if (field.columnNumber === 2) group.right.push(decorated);
         else group.left.push(decorated);
     });
     return Array.from(groups.values())
@@ -141,7 +143,9 @@ export function buildSections(fields, page, context) {
             columns: [
                 { key: 'left', fields: group.left.sort((a, b) => a.sortOrder - b.sortOrder) },
                 { key: 'right', fields: group.right.sort((a, b) => a.sortOrder - b.sortOrder) }
-            ]
+            ],
+            wideFields: group.wide.sort((a, b) => a.columnNumber - b.columnNumber || a.sortOrder - b.sortOrder),
+            hasWide: group.wide.length > 0
         }));
 }
 

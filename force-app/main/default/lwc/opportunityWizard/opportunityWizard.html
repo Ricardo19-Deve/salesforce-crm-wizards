@@ -60,6 +60,16 @@
                                 </div>
                             </template>
                         </div>
+                        <template lwc:if={section.hasWide}>
+                            <div class="wide-grid">
+                                <template for:each={section.wideFields} for:item="field">
+                                    <div key={field.key} class="field-tile">
+                                        <c-wizard-field-input field={field} data-field-api={field.apiName}
+                                            onfieldchange={handleFieldChange}></c-wizard-field-input>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
                     </section>
                 </template>
             </main>
