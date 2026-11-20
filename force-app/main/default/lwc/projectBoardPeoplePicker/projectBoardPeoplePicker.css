@@ -1,0 +1,144 @@
+@import 'c/projectBoardStyles';
+
+:host {
+    display: block;
+    min-width: 0;
+}
+.wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 38px;
+    border: 1px solid var(--jx-glass-border);
+    border-radius: 12px;
+    background: var(--jx-field);
+    transition:
+        border-color 0.2s,
+        box-shadow 0.25s,
+        background 0.2s;
+}
+.wrap:hover {
+    background: var(--jx-field-hover);
+}
+.wrap:focus-within {
+    border-color: var(--jx-accent);
+    box-shadow: 0 0 0 4px var(--jx-accent-ring);
+}
+.search-icon {
+    flex: none;
+    margin-left: 12px;
+    --slds-c-icon-color-foreground-default: var(--jx-text-muted);
+}
+.chosen {
+    flex: none;
+    margin-left: 8px;
+}
+.field {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0 10px;
+    border: none;
+    background: transparent;
+    color: var(--jx-text);
+    font: inherit;
+    outline: none;
+}
+.field:focus,
+.field:focus-visible {
+    border: none;
+    outline: none;
+    box-shadow: none;
+}
+.field::placeholder {
+    color: var(--jx-text-muted);
+}
+.has-selection .field {
+    font-weight: 600;
+}
+.clear {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    margin-right: 5px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+}
+.clear:hover {
+    background: var(--jx-hover);
+}
+.clear:focus-visible {
+    outline: 2px solid var(--jx-accent);
+}
+
+/* ---------- Suggestions: in the page flow, so a dialog grows (and scrolls) instead of cutting the list */
+.list {
+    position: relative;
+    z-index: 2;
+    max-height: 280px;
+    margin: 6px 0 0;
+    padding: 6px;
+    overflow-y: auto;
+    list-style: none;
+    border: 1px solid var(--jx-glass-border);
+    border-radius: 14px;
+    background: var(--jx-option-bg);
+    box-shadow:
+        0 18px 40px rgba(15, 23, 60, 0.22),
+        0 2px 6px rgba(15, 23, 60, 0.12);
+    animation: pop 0.18s var(--jx-spring, ease);
+}
+@keyframes pop {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .list {
+        animation: none;
+    }
+}
+.option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 9px;
+    color: var(--jx-text);
+    cursor: pointer;
+}
+.option.active {
+    background: var(--jx-accent-ring);
+}
+.person {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.name {
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.title {
+    overflow: hidden;
+    color: var(--jx-text-subtle);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.empty {
+    padding: 10px;
+    color: var(--jx-text-subtle);
+    font-size: 13px;
+}

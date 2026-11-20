@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomNotificationType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customNotifTypeName>Project Board Activity</customNotifTypeName>
+    <description>Assignments, mentions, comments and status changes on issues you follow, and project requests.</description>
+    <desktop>true</desktop>
+    <masterLabel>Project Board Activity</masterLabel>
+    <mobile>true</mobile>
+</CustomNotificationType>

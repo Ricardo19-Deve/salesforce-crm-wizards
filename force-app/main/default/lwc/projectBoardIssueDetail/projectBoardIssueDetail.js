@@ -12,6 +12,11 @@ import deleteIssue from '@salesforce/apex/ProjectBoardController.deleteIssue';
 import getIssueDetail from '@salesforce/apex/ProjectBoardController.getIssueDetail';
 import addComment from '@salesforce/apex/ProjectBoardController.addComment';
 import deleteComment from '@salesforce/apex/ProjectBoardController.deleteComment';
+import getFollowers from '@salesforce/apex/ProjectActivityController.getFollowers';
+import setFollowing from '@salesforce/apex/ProjectActivityController.setFollowing';
+import markIssueRead from '@salesforce/apex/ProjectActivityController.markIssueRead';
+import addDependency from '@salesforce/apex/ProjectPlanController.addDependency';
+import removeDependency from '@salesforce/apex/ProjectPlanController.removeDependency';
 import {
     STATUSES,
     TYPES,
@@ -47,6 +52,8 @@ export default class ProjectBoardIssueDetail extends LightningElement {
     @api readOnly = false;
     /** Users who can be assignees (project Leads and Members), as { id, name }. */
     @api assignableUsers = [];
+    /** All project members (for @mentions), as returned by getBoardData. */
+    @api members = [];
 
     _issueId;
     _connected = false;
@@ -67,6 +74,10 @@ export default class ProjectBoardIssueDetail extends LightningElement {
     comments = [];
     history = [];
     activityTab = 'comments';
+    followers = { following: false, people: [] };
+    depKind = 'blockedBy';
+    depTarget = '';
+    mentionRound = 0;
     activeTab = 'details';
 
     @api
@@ -253,6 +264,7 @@ export default class ProjectBoardIssueDetail extends LightningElement {
             Sprint__c: d.sprintId || '',
             Epic__c: d.epicId || '',
             Story_Points__c: null,
+            Start_Date__c: null,
             Due_Date__c: null,
             Labels__c: ''
         };
@@ -342,10 +354,18 @@ export default class ProjectBoardIssueDetail extends LightningElement {
     async loadDetail() {
         const issueId = this._issueId;
         try {
-            const detail = await getIssueDetail({ issueId });
+            const [detail, followers] = await Promise.all([getIssueDetail({ issueId }), getFollowers({ issueId })]);
             if (issueId !== this._issueId) return;
             this.comments = detail.comments || [];
             this.history = detail.history || [];
+            this.followers = followers;
+            if (!this._readIssues) this._readIssues = new Set();
+            if (!this._readIssues.has(issueId)) {
+                this._readIssues.add(issueId);
+                markIssueRead({ issueId })
+                    .then(() => this.dispatchEvent(new CustomEvent('read')))
+                    .catch(() => {});
+            }
         } catch (e) {
             this.toast('Could not load activity', reduceErrors(e), 'error');
         }
@@ -543,9 +563,213 @@ export default class ProjectBoardIssueDetail extends LightningElement {
     }
 
     handleDateChange(event) {
+        const field = event.target.dataset.field;
         const value = event.target.value || null;
-        if (value === this.issue.dueDate) return;
-        this.saveFields({ Due_Date__c: value });
+        const current = field === 'Start_Date__c' ? this.issue.startDate : this.issue.dueDate;
+        if (value === current) return;
+        this.saveFields({ [field]: value });
+    }
+
+    handleMilestone(event) {
+        this.saveFields({ Milestone__c: event.target.checked });
+    }
+
+    // ---------------------------------------------------------------- Followers
+
+    get watchLabel() {
+        return this.followers.following ? 'Watching' : 'Watch';
+    }
+
+    get watchClass() {
+        return 'btn btn-sm watch-btn' + (this.followers.following ? ' btn-selected' : '');
+    }
+
+    get watchPressed() {
+        return this.followers.following ? 'true' : 'false';
+    }
+
+    get followerAvatars() {
+        return this.followers.people.slice(0, 5).map((p) => ({
+            id: p.id,
+            name: p.name,
+            initials: initials(p.name),
+            style: avatarStyle(p.id)
+        }));
+    }
+
+    get followerText() {
+        const n = this.followers.people.length;
+        if (!n) return 'Nobody is watching yet';
+        return `${n} watching`;
+    }
+
+    get followerNames() {
+        return this.followers.people.map((p) => p.name).join(', ');
+    }
+
+    async toggleFollow() {
+        try {
+            this.followers = await setFollowing({
+                issueId: this._issueId,
+                follow: !this.followers.following
+            });
+        } catch (e) {
+            this.toast('Could not change', reduceErrors(e), 'error');
+        }
+    }
+
+    // ---------------------------------------------------------------- Dependencies
+
+    depRows(links) {
+        return (links || [])
+            .map((link) => {
+                const other = (this.issues || []).find((i) => i.id === link.issueId);
+                if (!other) return null;
+                return {
+                    dependencyId: link.dependencyId,
+                    issueId: other.id,
+                    key: other.key,
+                    keyClass: other.keyClass,
+                    summary: other.summary,
+                    status: other.status,
+                    statusClass: other.statusClass,
+                    removeLabel: `Remove the dependency on ${other.key}`
+                };
+            })
+            .filter((r) => r);
+    }
+
+    get blockedByRows() {
+        return this.depRows(this.issue.blockedBy);
+    }
+
+    get blocksRows() {
+        return this.depRows(this.issue.blocks);
+    }
+
+    get hasBlockedBy() {
+        return this.blockedByRows.length > 0;
+    }
+
+    get hasBlocks() {
+        return this.blocksRows.length > 0;
+    }
+
+    get hasDependencies() {
+        return this.hasBlockedBy || this.hasBlocks;
+    }
+
+    get noDependencies() {
+        return !this.hasDependencies;
+    }
+
+    /** Epics group work; dependencies are between work items. */
+    get showDependencies() {
+        return !this.issue.isEpic;
+    }
+
+    get blockedNote() {
+        const n = this.issue.openBlockers;
+        return n ? `Waiting for ${n} open issue${n === 1 ? '' : 's'}` : '';
+    }
+
+    get depKindOptions() {
+        return [
+            {
+                value: 'blockedBy',
+                label: 'Is blocked by',
+                selected: this.depKind === 'blockedBy'
+            },
+            { value: 'blocks', label: 'Blocks', selected: this.depKind === 'blocks' }
+        ];
+    }
+
+    get depTargetOptions() {
+        const linked = new Set([
+            this.issue.id,
+            ...(this.issue.blockedBy || []).map((l) => l.issueId),
+            ...(this.issue.blocks || []).map((l) => l.issueId)
+        ]);
+        const choices = (this.issues || [])
+            .filter((i) => !linked.has(i.id) && !i.isEpic)
+            .map((i) => ({
+                value: i.id,
+                label: `${i.key} · ${i.summary}`,
+                selected: i.id === this.depTarget
+            }));
+        return [{ value: '', label: 'Choose an issue…', selected: !this.depTarget }, ...choices];
+    }
+
+    get depAddDisabled() {
+        return this.busy || !this.depTarget;
+    }
+
+    handleDepKind(event) {
+        this.depKind = event.detail.value;
+    }
+
+    handleDepTarget(event) {
+        this.depTarget = event.detail.value;
+    }
+
+    async handleAddDependency() {
+        const blocked = this.depKind === 'blockedBy' ? this._issueId : this.depTarget;
+        const blocking = this.depKind === 'blockedBy' ? this.depTarget : this._issueId;
+        this.busy = true;
+        try {
+            await addDependency({
+                blockedIssueId: blocked,
+                blockingIssueId: blocking
+            });
+            this.depTarget = '';
+            this.dispatchEvent(new CustomEvent('changed'));
+        } catch (e) {
+            this.toast('Could not add the dependency', reduceErrors(e), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    async handleRemoveDependency(event) {
+        const dependencyId = event.currentTarget.dataset.dep;
+        this.busy = true;
+        try {
+            await removeDependency({ dependencyId });
+            this.dispatchEvent(new CustomEvent('changed'));
+        } catch (e) {
+            this.toast('Could not remove the dependency', reduceErrors(e), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    // ---------------------------------------------------------------- Mentions
+
+    /** "@ Mention" picklist under the comment editor: adds "@Full Name" to the comment. */
+    get mentionOptions() {
+        // mentionRound changes after each pick, so the picklist goes back to its placeholder
+        const round = this.mentionRound;
+        return [
+            { value: '', label: '@ Mention someone', selected: true, round },
+            ...(this.members || [])
+                .filter((m) => m.name)
+                .map((m) => ({
+                    value: m.userId,
+                    label: `${m.name} · ${m.role}`,
+                    selected: false
+                }))
+        ];
+    }
+
+    handleMention(event) {
+        const member = (this.members || []).find((m) => m.userId === event.detail.value);
+        this.mentionRound += 1;
+        if (!member) return;
+        const mention = `<b>@${member.name}</b>&nbsp;`;
+        const draft = this.commentDraft || '';
+        this.commentDraft = /<\/p>\s*$/.test(draft)
+            ? draft.replace(/<\/p>\s*$/, ` ${mention}</p>`)
+            : `${draft}${draft ? ' ' : ''}${mention}`;
     }
 
     handleCommitField(event) {

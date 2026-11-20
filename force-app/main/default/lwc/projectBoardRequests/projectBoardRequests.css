@@ -1,0 +1,78 @@
+@import 'c/projectBoardStyles';
+
+:host {
+    display: block;
+}
+.layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 1.1fr) minmax(320px, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+@media (max-width: 1000px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+}
+.panel {
+    padding: 20px 22px;
+    border-radius: 24px;
+}
+.panel-title {
+    margin: 0 0 14px;
+    font-size: 16px;
+    font-weight: 800;
+}
+.panel-sub {
+    margin: 6px 0 0;
+    color: var(--jx-text-subtle);
+    font-size: 13px;
+}
+.intake {
+    margin-bottom: 16px;
+}
+.intake-title {
+    font-weight: 700;
+}
+.two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+.mine {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.mine-row {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--jx-divider);
+}
+.mine-row:last-child {
+    border-bottom: none;
+}
+.mine-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.mine-summary {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mine-meta {
+    margin-top: 4px;
+    color: var(--jx-text-subtle);
+    font-size: 12px;
+}
+.form-error {
+    margin-bottom: 12px;
+}

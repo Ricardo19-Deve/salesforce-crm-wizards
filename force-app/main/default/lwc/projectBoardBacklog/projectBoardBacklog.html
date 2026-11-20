@@ -163,6 +163,19 @@
                                     </span>
                                     <span class={row.keyClass}>{row.key}</span>
                                     <span class="row-summary">{row.summary}</span>
+                                    <template lwc:if={row.isBlocked}>
+                                        <span class="badge badge-blocked" title="Waiting for another issue"
+                                            >Blocked</span
+                                        >
+                                    </template>
+                                    <template lwc:if={row.isMilestone}>
+                                        <span class="badge badge-milestone" title="Milestone"
+                                            ><span class="milestone-glyph"></span>Milestone</span
+                                        >
+                                    </template>
+                                    <template lwc:if={row.isRequest}>
+                                        <span class="badge badge-request" title={row.requestedByName}>Request</span>
+                                    </template>
                                     <div class="row-right">
                                         <template lwc:if={row.epicId}>
                                             <span class="epic-tag" style={row.epicStyle}>{row.epicName}</span>

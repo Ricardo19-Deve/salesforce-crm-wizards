@@ -712,3 +712,24 @@ select:focus-visible,
 [hidden] {
     display: none !important;
 }
+
+/* ---------- Dependency, milestone and request badges */
+.badge-blocked {
+    background: rgba(255, 77, 109, 0.14);
+    color: var(--jx-danger-text);
+}
+.badge-milestone {
+    gap: 5px;
+    background: rgba(106, 77, 255, 0.14);
+    color: var(--jx-review-fg);
+}
+.milestone-glyph {
+    width: 7px;
+    height: 7px;
+    background: currentColor;
+    transform: rotate(45deg);
+}
+.badge-request {
+    background: var(--jx-accent-soft);
+    color: var(--jx-accent-text);
+}

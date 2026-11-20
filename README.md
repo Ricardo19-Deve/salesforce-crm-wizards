@@ -11,7 +11,7 @@ This is a neutral open-source reference. It rewrites patterns I built in enterpr
 | **Opportunity + products wizard** | The price book is chosen from the Account's country (rule-based, with a fallback). The wizard saves the Opportunity and its lines in one transaction. The server decides the stage, price book and currency. |
 | **Contract sync pattern** | A Queueable and a Schedulable run an incremental sync with a watermark and an upsert on an external id. The sync reads a `ContractFeed.Source` interface. This repository only ships a **mock** source (static-resource JSON), so it makes no callouts. |
 | **Before-save Flow** | `Campaign_Set_Name` builds a consistent Campaign name. It is bulk-safe and uses no SOQL or DML. |
-| **Project Board** | Kanban board, backlog with sprints and epics, issue tracking, **BRD & solution design** with a **recorded sign-off workflow**, **UAT test scripts** generated from acceptance criteria, file attachments and **sprint reports**. Projects are private to their members (Lead / Member / Viewer), and the board and backlog work fully from the keyboard. Every document exports to PDF and Word. Runs as a Lightning tab or a full-screen Experience Cloud portal, with a light / dark glass UI. See [docs/project-board.md](docs/project-board.md). |
+| **Project Board** | Kanban board, backlog with sprints and epics, issue tracking, **BRD & solution design** with a **recorded sign-off workflow**, **UAT test scripts** generated from acceptance criteria, file attachments and **sprint reports**. Projects are private to their members (Lead / Member / Viewer). Notifications with @mentions and followers, a **timeline** with dependencies and milestones, a **request form** for people outside the project and a **portfolio** of every project. The board and backlog work fully from the keyboard. Every document exports to PDF and Word. Runs as a Lightning tab or a full-screen Experience Cloud portal, with a light / dark glass UI. See [docs/project-board.md](docs/project-board.md). |
 
 ## Screenshots
 
@@ -35,7 +35,9 @@ Captured in a Developer Edition org with the demo data (fictitious companies and
 | ![Reports](docs/images/15-project-reports.png) Reports: velocity (committed vs delivered) and sprint cards | ![Sprint report PDF](docs/images/16-project-sprint-report-pdf.png) Sprint report exported to PDF |
 | ![BRD PDF](docs/images/17-project-brd-pdf.png) BRD exported to PDF with the recorded sign-off decisions (also available as Word) | ![Sign-off](docs/images/18-project-sign-off.png) Sign-off: one approved with a comment, one waiting for a decision, one not required |
 | ![Members](docs/images/19-project-members.png) Project members and their roles | ![Keyboard move](docs/images/20-project-keyboard-move.png) Keyboard move: the card is lifted with Space and the target column is highlighted |
-| ![Picklist](docs/images/21-project-picklist.png) Picklists follow the design in both themes; the assignee list only offers project members | |
+| ![Picklist](docs/images/21-project-picklist.png) Picklists follow the design in both themes; the assignee list only offers project members | ![Timeline](docs/images/22-project-timeline.png) Timeline: bars by epic, today, dependency arrows (the red one is a conflict) |
+| ![Portfolio](docs/images/23-project-portfolio.png) Portfolio: health with its reasons, sprint progress against time, next milestone | ![Requests](docs/images/24-project-requests.png) Requests: the form, My requests and the Lead's switch |
+| ![Inbox](docs/images/25-project-inbox.png) Inbox: mentions, status changes and assignments | ![Dependencies](docs/images/26-project-dependencies.png) Issue: blocked by another issue, Watch, start date and milestone |
 
 ## Architecture
 
@@ -128,7 +130,7 @@ Optional settings:
 6. **Contract sync.** The seed script ran the sync from the mock source.
    - Open **External Contracts**: the contracts are linked to Accounts by account number.
 
-The Project Board has its own 5-minute demo script in [docs/project-board.md](docs/project-board.md#demo-script-5-minutes).
+The Project Board has its own 10-minute demo script in [docs/project-board.md](docs/project-board.md#demo-script-10-minutes).
 
 [docs/presentation.md](docs/presentation.md) has a talk track for presenting the project.
 
@@ -146,12 +148,12 @@ The configuration guide is in [docs/configuration.md](docs/configuration.md). In
 
 ## Tests
 
-- **Apex:** 55 tests with `sf apex run test -l RunLocalTests -c`, all passing in a Developer Edition org on 19 Nov 2026 (91% org-wide coverage, Project Board classes 87–95%). The earlier wizard suite of 46 tests also passed in a fresh scratch org. The CI runs them too when a Dev Hub is connected (see below).
+- **Apex:** 59 tests with `sf apex run test -l RunLocalTests`, all passing in a Developer Edition org on 20 Nov 2026 (Project Board classes 87–96% covered). The earlier wizard suite of 46 tests also passed in a fresh scratch org. The CI runs them too when a Dev Hub is connected (see below).
 - **Org-dependent branches:** a few branches depend on org features. Related Accounts need *Contacts to Multiple Accounts* enabled.
 - **Configuration tests:** they use in-memory Custom Metadata rows.
 - **Controller tests:** they use the sample configuration shipped in `customMetadata/`.
-- **Project Board:** `ProjectBoardControllerTest` and `ProjectDocsControllerTest` run as a user with `Project_Board_User`, so user-mode access is tested too. `ProjectBoardAccessTest` checks project visibility, roles and the sign-off workflow with three Standard User profile users.
-- **JavaScript:** `npm test` runs Jest on the shared field helpers, `projectBoardUtils` and `projectBoardSelect` (21 tests).
+- **Project Board:** `ProjectBoardControllerTest` and `ProjectDocsControllerTest` run as a user with `Project_Board_User`, so user-mode access is tested too. `ProjectBoardAccessTest` checks project visibility, roles and the sign-off workflow with three Standard User profile users, and `ProjectCollaborationTest` covers notifications, dependencies, requests and the portfolio.
+- **JavaScript:** `npm test` runs Jest on the shared field helpers, `projectBoardUtils` and `projectBoardSelect` (23 tests).
 - **CI:** every push runs ESLint and Jest. To run the Apex tests too, add a repository secret `DEVHUB_SFDX_AUTH_URL` with the *Sfdx Auth Url* of a Dev Hub (`sf org display --verbose -o <dev hub>`). The job then creates a one-day scratch org, deploys, runs the tests and deletes the org. Use a Dev Hub dedicated to CI: the secret gives access to it.
 
 ## Project structure
@@ -163,11 +165,12 @@ force-app/main/default/
                      projectBoard* (Project Board app, views, documents, design system)
   customMetadata/    sample configuration (Contact, Campaign, Opportunity, price book rules)
   objects/           custom metadata types, record types, fields, External_Contract__c,
-                     PM_* (project, member, sprint, issue, comment, BRD, sign-off, requirement, test case)
+                     PM_* (project, member, sprint, issue, comment, BRD, sign-off, requirement, test case,
+                     follower, dependency, notification)
   pages/             ProjectBrdExport, ProjectTestScriptExport, ProjectSprintReport (PDF / Word)
   flows/             Campaign_Set_Name (before-save)
   triggers/          ProjectMemberTrigger, ProjectBrdTrigger (Project Board sharing)
-  notificationtypes/ Project_Board_Sign_Off
+  notificationtypes/ Project_Board_Sign_Off, Project_Board_Activity
   permissionsets/    Record_Wizard_User, Opportunity_Wizard_User, Contract_Integration, Project_Board_User, Project_Board_Admin
   staticresources/   MockContracts.json (fictitious data)
 scripts/apex/        seed-demo-data.apex, seed-project-board.apex

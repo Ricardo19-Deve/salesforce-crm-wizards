@@ -6,7 +6,8 @@
  * Where to configure: roles are Lead (manages members), Member (edits) and Viewer (read only). Projects are Private;
  * ProjectBoardSharing turns memberships into shares. The Project_Board_Admin permission set sees every project.
  * Gotchas: all queries and DML run in user mode, so record access always comes from membership. Only the issue
- * assignee rule and the member rules are checked here; the platform enforces the rest.
+ * assignee rule and the member rules are checked here; the platform enforces the rest. Assignments, status changes
+ * and comments are reported to ProjectActivityController, which decides who is notified.
  */
 public with sharing class ProjectBoardController {
 
@@ -18,7 +19,7 @@ public with sharing class ProjectBoardController {
 
     private static final Set<String> EDITABLE_FIELDS = new Set<String>{
         'summary__c', 'description__c', 'type__c', 'status__c', 'priority__c', 'assignee__c',
-        'story_points__c', 'sprint__c', 'epic__c', 'due_date__c', 'labels__c'
+        'story_points__c', 'sprint__c', 'epic__c', 'due_date__c', 'labels__c', 'start_date__c', 'milestone__c'
     };
 
     private static final Set<String> REFERENCE_FIELDS = new Set<String>{ 'Assignee__c', 'Sprint__c', 'Epic__c' };
@@ -27,7 +28,7 @@ public with sharing class ProjectBoardController {
         'Id, Name, Project__c, Summary__c, Description__c, Type__c, Status__c, Priority__c, Story_Points__c, ' +
         'Rank__c, Sprint__c, Sprint__r.Name, Sprint__r.Status__c, Epic__c, Epic__r.Name, Epic__r.Summary__c, ' +
         'Assignee__c, Assignee__r.Name, Reporter__c, Reporter__r.Name, Due_Date__c, Labels__c, ' +
-        'Resolved_Date__c, CreatedDate, LastModifiedDate';
+        'Resolved_Date__c, Start_Date__c, Milestone__c, Requested_By__c, Requested_By__r.Name, CreatedDate, LastModifiedDate';
 
     public class ProjectBoardException extends Exception {}
 
@@ -42,6 +43,7 @@ public with sharing class ProjectBoardController {
         @AuraEnabled public String myRole;
         @AuraEnabled public Boolean canEdit;
         @AuraEnabled public Boolean canManageMembers;
+        @AuraEnabled public List<ProjectPlanController.DependencyInfo> dependencies;
     }
 
     public class MemberInfo {
@@ -139,7 +141,7 @@ public with sharing class ProjectBoardController {
             data.currentUserId = UserInfo.getUserId();
             data.currentUserName = UserInfo.getName();
             data.project = [
-                SELECT Id, Name, Key__c, Description__c, Lead__c, Lead__r.Name
+                SELECT Id, Name, Key__c, Description__c, Lead__c, Lead__r.Name, Accepts_Requests__c
                 FROM PM_Project__c
                 WHERE Id = :projectId
                 WITH USER_MODE
@@ -158,6 +160,7 @@ public with sharing class ProjectBoardController {
             );
             data.stats = buildStats(new Map<Id, PM_Issue__c>(data.issues).keySet());
             data.members = members(projectId);
+            data.dependencies = ProjectPlanController.forProject(projectId);
             ProjectAccess access = accessFor(projectId);
             data.myRole = access.role;
             data.canEdit = access.canEdit;
@@ -197,19 +200,28 @@ public with sharing class ProjectBoardController {
                 if (fields.containsKey('Status__c')) {
                     rec.Resolved_Date__c = rec.Status__c == STATUS_DONE ? System.now() : null;
                 }
+                PM_Issue__c before = queryIssue(rec.Id);
                 if (rec.Assignee__c != null) {
-                    PM_Issue__c current = [SELECT Project__c FROM PM_Issue__c WHERE Id = :rec.Id WITH USER_MODE];
-                    assertAssignable(current.Project__c, rec.Assignee__c);
+                    assertAssignable(before.Project__c, rec.Assignee__c);
                 }
+                assertDates(
+                    fields.containsKey('Start_Date__c') ? rec.Start_Date__c : before.Start_Date__c,
+                    fields.containsKey('Due_Date__c') ? rec.Due_Date__c : before.Due_Date__c
+                );
                 update as user rec;
-            } else {
-                String projectId = asString(fields.get('Project__c'));
-                if (rec.Assignee__c != null && String.isNotBlank(projectId)) {
-                    assertAssignable(Id.valueOf(projectId), rec.Assignee__c);
-                }
-                insertIssue(rec, String.isBlank(projectId) ? null : Id.valueOf(projectId));
+                PM_Issue__c after = queryIssue(rec.Id);
+                ProjectActivityController.issueChanged(before, after);
+                return after;
             }
-            return queryIssue(rec.Id);
+            String projectId = asString(fields.get('Project__c'));
+            if (rec.Assignee__c != null && String.isNotBlank(projectId)) {
+                assertAssignable(Id.valueOf(projectId), rec.Assignee__c);
+            }
+            assertDates(rec.Start_Date__c, rec.Due_Date__c);
+            insertIssue(rec, String.isBlank(projectId) ? null : Id.valueOf(projectId));
+            PM_Issue__c created = queryIssue(rec.Id);
+            ProjectActivityController.issuesCreated(new List<PM_Issue__c>{ created });
+            return created;
         } catch (Exception e) {
             throw auraError(e);
         }
@@ -222,6 +234,7 @@ public with sharing class ProjectBoardController {
     public static void moveIssue(Id issueId, String status, Boolean changeSprint, Id sprintId, Decimal rank) {
         try {
             PM_Issue__c rec = new PM_Issue__c(Id = issueId);
+            PM_Issue__c before = String.isNotBlank(status) ? queryIssue(issueId) : null;
             if (String.isNotBlank(status)) {
                 rec.Status__c = status;
                 rec.Resolved_Date__c = status == STATUS_DONE ? System.now() : null;
@@ -233,6 +246,9 @@ public with sharing class ProjectBoardController {
                 rec.Rank__c = rank;
             }
             update as user rec;
+            if (before != null && before.Status__c != status) {
+                ProjectActivityController.issueChanged(before, queryIssue(issueId));
+            }
         } catch (Exception e) {
             throw auraError(e);
         }
@@ -244,6 +260,8 @@ public with sharing class ProjectBoardController {
             // BRDs are linked by lookup and are owned by their author: delete the issue as the user first (this
             // checks the user may change the project), then remove its BRD even when someone else wrote it.
             List<PM_BRD__c> brds = [SELECT Id FROM PM_BRD__c WHERE Issue__c = :issueId WITH USER_MODE];
+            // Links where this issue blocks others (the links where it is blocked go with it)
+            delete as user [SELECT Id FROM PM_Dependency__c WHERE Blocking_Issue__c = :issueId WITH USER_MODE];
             delete as user new PM_Issue__c(Id = issueId);
             if (!brds.isEmpty()) {
                 ProjectBoardSharing.deleteAsSystem(brds);
@@ -302,6 +320,9 @@ public with sharing class ProjectBoardController {
             }
             PM_Comment__c comment = new PM_Comment__c(Issue__c = issueId, Body__c = body);
             insert as user comment;
+            ProjectActivityController.commentAdded(
+                [SELECT Id, Name, Summary__c, Project__c FROM PM_Issue__c WHERE Id = :issueId WITH USER_MODE], body
+            );
             return [
                 SELECT Id, Body__c, CreatedById, CreatedBy.Name, CreatedDate, LastModifiedDate
                 FROM PM_Comment__c
@@ -479,6 +500,48 @@ public with sharing class ProjectBoardController {
         }
     }
 
+    public class UserOption {
+        @AuraEnabled public Id id;
+        @AuraEnabled public String name;
+        @AuraEnabled public String title;
+    }
+
+    /** People who can be added to the project: active internal users who are not members yet (2+ letters). */
+    @AuraEnabled
+    public static List<UserOption> searchUsers(Id projectId, String term) {
+        try {
+            List<UserOption> result = new List<UserOption>();
+            String text = term == null ? '' : term.trim();
+            if (text.length() < 2) {
+                return result;
+            }
+            Set<Id> members = new Set<Id>();
+            for (PM_Project_Member__c m : [
+                SELECT User__c FROM PM_Project_Member__c WHERE Project__c = :projectId WITH USER_MODE
+            ]) {
+                members.add(m.User__c);
+            }
+            // Bound variable: no injection; wildcards typed by the user are dropped
+            String pattern = '%' + text.replace('%', '').replace('_', '') + '%';
+            for (User u : [
+                SELECT Id, Name, Title FROM User
+                WHERE IsActive = true AND UserType = 'Standard' AND Name LIKE :pattern AND Id NOT IN :members
+                WITH USER_MODE
+                ORDER BY Name
+                LIMIT 8
+            ]) {
+                UserOption o = new UserOption();
+                o.id = u.Id;
+                o.name = u.Name;
+                o.title = u.Title;
+                result.add(o);
+            }
+            return result;
+        } catch (Exception e) {
+            throw auraError(e);
+        }
+    }
+
     @AuraEnabled
     public static void updateMemberRole(Id memberId, String role) {
         try {
@@ -641,19 +704,15 @@ public with sharing class ProjectBoardController {
         if (String.isBlank(rec.Summary__c)) {
             throw new ProjectBoardException('Summary is required.');
         }
-        // Lock the project row so concurrent creations get unique sequential keys
-        PM_Project__c project = [SELECT Id, Key__c, Issue_Counter__c FROM PM_Project__c WHERE Id = :projectId FOR UPDATE];
-        Integer next = (project.Issue_Counter__c == null ? 0 : project.Issue_Counter__c.intValue()) + 1;
-        project.Issue_Counter__c = next;
-        update project;
-
-        AggregateResult[] agg = [SELECT MAX(Rank__c) maxRank FROM PM_Issue__c WHERE Project__c = :projectId];
-        Decimal maxRank = (Decimal) agg[0].get('maxRank');
-
+        // Only people who can edit the project may create issues in it (the insert below checks it again)
+        if (!accessFor(projectId).canEdit) {
+            throw new ProjectBoardException('You cannot create issues in this project.');
+        }
+        ProjectBoardSharing.IssueKey key = ProjectBoardSharing.allocateIssueKey(projectId);
         rec.Project__c = projectId;
-        rec.Name = project.Key__c + '-' + next;
+        rec.Name = key.name;
         rec.Reporter__c = UserInfo.getUserId();
-        rec.Rank__c = (maxRank == null ? 0 : maxRank.round(System.RoundingMode.FLOOR)) + 1;
+        rec.Rank__c = key.rank;
         if (rec.Status__c == null) {
             rec.Status__c = STATUS_TODO;
         }
@@ -669,6 +728,12 @@ public with sharing class ProjectBoardController {
         insert as user rec;
     }
 
+    private static void assertDates(Date startDate, Date dueDate) {
+        if (startDate != null && dueDate != null && startDate > dueDate) {
+            throw new ProjectBoardException('The start date must be on or before the due date.');
+        }
+    }
+
     private static PM_Issue__c queryIssue(Id issueId) {
         return Database.query('SELECT ' + ISSUE_FIELDS + ' FROM PM_Issue__c WHERE Id = :issueId WITH USER_MODE');
     }
@@ -679,6 +744,9 @@ public with sharing class ProjectBoardController {
             return null;
         }
         switch on fieldType {
+            when BOOLEAN {
+                return Boolean.valueOf(s);
+            }
             when DATE {
                 return Date.valueOf(s.left(10));
             }

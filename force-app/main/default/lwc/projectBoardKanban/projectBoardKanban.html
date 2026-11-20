@@ -139,6 +139,21 @@
                                                 title="Overdue"
                                             ></lightning-icon>
                                         </template>
+                                        <template lwc:if={card.isBlocked}>
+                                            <span class="badge badge-blocked" title="Waiting for another issue"
+                                                >Blocked</span
+                                            >
+                                        </template>
+                                        <template lwc:if={card.isMilestone}>
+                                            <span class="badge badge-milestone" title="Milestone"
+                                                ><span class="milestone-glyph"></span>Milestone</span
+                                            >
+                                        </template>
+                                        <template lwc:if={card.isRequest}>
+                                            <span class="badge badge-request" title={card.requestedByName}
+                                                >Request</span
+                                            >
+                                        </template>
                                         <template lwc:if={card.hasBrd}>
                                             <span class="badge badge-brd" title="Has BRD">BRD</span>
                                         </template>

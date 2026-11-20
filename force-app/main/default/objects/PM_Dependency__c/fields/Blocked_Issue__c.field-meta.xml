@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Blocked_Issue__c</fullName>
+    <label>Blocked Issue</label>
+    <referenceTo>PM_Issue__c</referenceTo>
+    <relationshipLabel>Blocked By</relationshipLabel>
+    <relationshipName>Blocked_By</relationshipName>
+    <relationshipOrder>0</relationshipOrder>
+    <reparentableMasterDetail>false</reparentableMasterDetail>
+    <trackHistory>false</trackHistory>
+    <type>MasterDetail</type>
+    <writeRequiresMasterRead>false</writeRequiresMasterRead>
+</CustomField>

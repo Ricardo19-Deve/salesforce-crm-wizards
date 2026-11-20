@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Follower_Key__c</fullName>
+    <caseSensitive>false</caseSensitive>
+    <description>Issue Id + User Id: one follow per user and issue.</description>
+    <externalId>false</externalId>
+    <label>Follower Key</label>
+    <length>40</length>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>
