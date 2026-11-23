@@ -13,7 +13,7 @@ private class WizardConfigTest {
         };
         WizardConfig.fieldRows = new List<Wizard_Field__mdt>{
             new Wizard_Field__mdt(DeveloperName = 'Email', Object_Api_Name__c = 'Contact', Field_Api_Name__c = 'Email',
-                Page__c = 1, Section__c = 'Main', Section_Order__c = 10, Sort_Order__c = 20, Required__c = true, Active__c = true),
+                Page__c = 1, Section__c = 'Main', Section_Order__c = 10, Sort_Order__c = 20, Required__c = true, Identify_Step__c = true, Active__c = true),
             new Wizard_Field__mdt(DeveloperName = 'LastName', Object_Api_Name__c = 'Contact', Field_Api_Name__c = 'LastName',
                 Page__c = 1, Section__c = 'Main', Section_Order__c = 10, Sort_Order__c = 10, Field_Label__c = 'Surname', Active__c = true),
             new Wizard_Field__mdt(DeveloperName = 'Account', Object_Api_Name__c = 'Contact', Field_Api_Name__c = 'AccountId',
@@ -54,6 +54,8 @@ private class WizardConfigTest {
         Assert.areEqual('Surname', customer[0].fieldLabel);
         Assert.areEqual(2, customer[2].columnNumber);
         Assert.areEqual(1, customer[2].lookupRecordTypeIds.size());
+        Assert.isTrue(customer[1].identifyStep, 'Email is asked in the first screen');
+        Assert.isFalse(customer[0].identifyStep);
 
         Assert.areEqual(2, WizardConfig.fields(contactDescribe, 'Partner_Contact').size(), 'AccountId row is Customer only');
         Assert.areEqual(2, WizardConfig.fields(contactDescribe, null).size(), 'null = rows for every record type');

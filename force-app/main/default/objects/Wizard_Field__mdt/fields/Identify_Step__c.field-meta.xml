@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Identify_Step__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Contact wizard: checked = asked in the first screen (Contact creation) instead of the form. Required, Column and Sort Order apply there too. Without any checked row, the match rule fields are shown.</description>
+    <externalId>false</externalId>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Identify Step</label>
+    <type>Checkbox</type>
+</CustomField>
