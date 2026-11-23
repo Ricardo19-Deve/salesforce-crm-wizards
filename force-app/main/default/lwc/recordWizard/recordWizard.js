@@ -259,25 +259,68 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         return (this.matchRules || []).length > 0;
     }
 
+    // First screen fields: Wizard_Field__mdt rows with Identify Step. Column (Left / Right) picks the column, Sort Order
+    // the position, Required applies. Without such rows the match rule fields are shown (all optional).
+    get identifyRows() {
+        const configured = (this.fieldConfigs || []).filter((row) => row.identifyStep);
+        if (configured.length) {
+            return [...configured].sort((x, y) => x.sortOrder - y.sortOrder || String(x.key).localeCompare(String(y.key)));
+        }
+        return (this.matchRules || []).map((rule) => ({
+            ...(this.fieldConfigs || []).find((row) => row.fieldApiName === rule.fieldApiName),
+            fieldApiName: rule.fieldApiName,
+            required: false
+        }));
+    }
+
     get identifyInputs() {
-        return (this.matchRules || []).map((criterion) => {
-            const info = this.objectInfo?.fields?.[criterion.fieldApiName] || {};
-            const config = (this.fieldConfigs || []).find((row) => row.fieldApiName === criterion.fieldApiName);
+        return this.identifyRows.map((config) => {
+            const apiName = config.fieldApiName;
+            const info = this.objectInfo?.fields?.[apiName] || {};
             const isLookup = info.dataType === 'Reference';
-            const value = this.identifyValues[criterion.fieldApiName];
+            const isPicklist = info.dataType === 'Picklist';
+            const label = config.useCustomLabel ? config.fieldLabel : String(info.label || apiName).replace(/ ID$/, '');
+            const value = this.identifyValues[apiName];
             return {
-                apiName: criterion.fieldApiName,
-                label: config?.useCustomLabel
-                    ? config.fieldLabel
-                    : String(info.label || criterion.fieldApiName).replace(/ ID$/, ''),
+                apiName,
+                label,
                 isLookup,
-                isInput: !isLookup,
+                isPicklist,
+                isInput: !isLookup && !isPicklist,
+                options: isPicklist
+                    ? [{ label: '--None--', value: '' }, ...((this.picklistValues?.[apiName]?.values || [])
+                        .map((item) => ({ label: item.label, value: item.value })))]
+                    : undefined,
                 inputType: info.dataType === 'Email' ? 'email' : info.dataType === 'Phone' ? 'tel' : 'text',
                 lookupObject: isLookup ? info.referenceToInfos?.[0]?.apiName : undefined,
-                lookupFilter: recordTypeFilter(config?.lookupRecordTypeIds),
+                lookupFilter: recordTypeFilter(config.lookupRecordTypeIds),
+                required: config.required === true,
+                missingMessage: `${label} is mandatory. Please provide a value.`,
+                columnNumber: config.columnNumber === 2 ? 2 : 1,
                 value: value ?? null
             };
         });
+    }
+
+    get identifyColumns() {
+        const inputs = this.identifyInputs;
+        return [
+            { key: 'left', inputs: inputs.filter((i) => i.columnNumber !== 2) },
+            { key: 'right', inputs: inputs.filter((i) => i.columnNumber === 2) }
+        ];
+    }
+
+    // Every first-screen field marked Required must be filled before continuing.
+    validateIdentify() {
+        const inputs = [...this.template.querySelectorAll('[data-identify-field]')];
+        const valid = inputs.reduce((ok, input) => (typeof input.reportValidity === 'function' ? input.reportValidity() : true) && ok, true);
+        const missing = this.identifyInputs.some((i) => i.required && !hasValue(String(this.identifyValues[i.apiName] ?? '').trim()));
+        if (!valid || missing) {
+            this.identifyError = 'Fill in all required fields to continue.';
+            return false;
+        }
+        this.identifyError = undefined;
+        return true;
     }
 
     handleIdentifyChange(event) {
@@ -402,6 +445,7 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
     }
 
     async handleIdentifyContinue() {
+        if (!this.validateIdentify()) return;
         this.seedFromIdentify();
         if (!this.hasSelection) {
             this.accountList = [];
@@ -758,9 +802,11 @@ export default class RecordWizard extends NavigationMixin(LightningElement) {
         this.rebuildSections();
     }
 
-    // Form fields: on Contact, Account Name is edited in the Accounts section instead.
+    // Form fields: on Contact, Account Name is edited in the Accounts section and the first-screen fields are not asked
+    // again (they stay in the Summary).
     get formFields() {
-        return (this.allFields || []).filter((f) => !(this.manageAccounts && f.apiName === 'AccountId'));
+        const firstScreen = new Set(this.hasIdentifyStep ? (this.fieldConfigs || []).filter((r) => r.identifyStep).map((r) => r.fieldApiName) : []);
+        return (this.allFields || []).filter((f) => !(this.manageAccounts && f.apiName === 'AccountId') && !firstScreen.has(f.apiName));
     }
 
     rebuildSections() {

@@ -31,6 +31,7 @@ One row per field and per object. The same field can have several rows with diff
 | Required | Required in the wizard, even if optional on the object |
 | Read Only | Shown but never written |
 | Lookup Record Types | Lookups only: target record types allowed. The filter applies in the picker and is checked again in Apex. |
+| Identify Step | Contact wizard: asked in the first screen (Contact creation) instead of the form. Column, Sort Order and Required apply there too. Without any checked row, the match rule fields are shown. |
 
 > Security: saving runs in system mode, so **this list is the write whitelist**. A field that is not here cannot be written through the wizard.
 

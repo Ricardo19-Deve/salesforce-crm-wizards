@@ -2,7 +2,8 @@
  * Reads the wizard configuration from Custom Metadata and turns it into what the UI needs.
  *
  *  - Wizard_Record_Type__mdt  -> record types offered in step 1 (+ minimum duplicate score)
- *  - Wizard_Field__mdt        -> fields, labels, pages, sections, columns, required / read-only, lookup filters
+ *  - Wizard_Field__mdt        -> fields, labels, pages, sections, columns, required / read-only, lookup filters;
+ *                                Identify Step = asked in the first screen of the Contact wizard
  *  - Wizard_Match_Rule__mdt   -> Identify step fields and their weight in the duplicate score
  *
  * Rows are read with getAll() (no SOQL limits) and sorted here: ORDER BY on custom metadata fields is not
@@ -41,6 +42,7 @@ public with sharing class WizardConfig {
         @AuraEnabled public Boolean required;
         @AuraEnabled public Boolean readOnly;
         @AuraEnabled public List<Id> lookupRecordTypeIds;
+        @AuraEnabled public Boolean identifyStep;   // asked in the first screen of the Contact wizard
     }
 
     public class MatchRule {
@@ -152,6 +154,7 @@ public with sharing class WizardConfig {
             item.required = row.Required__c == true;
             item.readOnly = row.Read_Only__c == true;
             item.lookupRecordTypeIds = lookupRecordTypeIds(fieldDescribe, row.Lookup_Record_Types__c);
+            item.identifyStep = row.Identify_Step__c == true;
             output.add(item);
         }
         return output;

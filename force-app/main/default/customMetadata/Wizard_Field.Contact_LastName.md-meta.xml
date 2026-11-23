@@ -36,7 +36,7 @@
     </values>
     <values>
         <field>Sort_Order__c</field>
-        <value xsi:type="xsd:double">30</value>
+        <value xsi:type="xsd:double">15</value>
     </values>
     <values>
         <field>Required__c</field>
@@ -52,6 +52,10 @@
     </values>
     <values>
         <field>Active__c</field>
+        <value xsi:type="xsd:boolean">true</value>
+    </values>
+    <values>
+        <field>Identify_Step__c</field>
         <value xsi:type="xsd:boolean">true</value>
     </values>
 </CustomMetadata>

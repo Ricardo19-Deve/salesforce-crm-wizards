@@ -227,22 +227,32 @@
                 <section class="card">
                     <div class="section-eyebrow">CONTACT CREATION</div>
                     <div class="field-grid">
-                        <template for:each={identifyInputs} for:item="inp">
-                            <div key={inp.apiName} class="field-tile">
-                                <template if:true={inp.isInput}>
-                                    <lightning-input type={inp.inputType} label={inp.label} value={inp.value}
-                                        data-identify-field={inp.apiName} onchange={handleIdentifyChange}></lightning-input>
-                                </template>
-                                <template if:true={inp.isLookup}>
-                                    <lightning-record-picker label={inp.label} object-api-name={inp.lookupObject}
-                                        filter={inp.lookupFilter} value={inp.value}
-                                        data-identify-field={inp.apiName} onchange={handleIdentifyChange}></lightning-record-picker>
+                        <template for:each={identifyColumns} for:item="column">
+                            <div key={column.key} class="field-column">
+                                <template for:each={column.inputs} for:item="inp">
+                                    <div key={inp.apiName} class="field-tile">
+                                        <template lwc:if={inp.isInput}>
+                                            <lightning-input type={inp.inputType} label={inp.label} value={inp.value}
+                                                required={inp.required} message-when-value-missing={inp.missingMessage}
+                                                data-identify-field={inp.apiName} onchange={handleIdentifyChange}></lightning-input>
+                                        </template>
+                                        <template lwc:if={inp.isPicklist}>
+                                            <lightning-combobox label={inp.label} value={inp.value} options={inp.options}
+                                                required={inp.required} message-when-value-missing={inp.missingMessage}
+                                                data-identify-field={inp.apiName} onchange={handleIdentifyChange}></lightning-combobox>
+                                        </template>
+                                        <template lwc:if={inp.isLookup}>
+                                            <lightning-record-picker label={inp.label} object-api-name={inp.lookupObject}
+                                                filter={inp.lookupFilter} value={inp.value} required={inp.required}
+                                                data-identify-field={inp.apiName} onchange={handleIdentifyChange}></lightning-record-picker>
+                                        </template>
+                                    </div>
                                 </template>
                             </div>
                         </template>
                     </div>
                     <p class="merge-hint">
-                        Start with the Last Name or the Email: matching Contacts and Leads appear below as you type.
+                        Fields marked * are required. Matching Contacts and Leads appear below as you type.
                         <template if:true={isSearching}><span class="searching">&nbsp;Searching…</span></template>
                     </p>
                 </section>
